@@ -1,0 +1,25 @@
+{
+    "name": "RPA",
+    "uri": "http://some-company/schema/bpmn/rpa",
+    "prefix": "rpa",
+    "xml": {
+        "tagAlias": "lowerCase"
+    },
+    "types": [
+        {
+            "name": "RPAConfiguration",
+            "superClass": [
+                "bpmn:Task"
+            ],
+            "properties": [
+                {
+                    "name": "operation",
+                    "isAttr": true,
+                    "type": "String"
+                }
+            ]
+        }
+    ],
+    "emumerations": [],
+    "associations": []
+}
