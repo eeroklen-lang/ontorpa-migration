@@ -14,7 +14,7 @@ Tick boxes as work lands. Paths are relative to the repo root (`backend/…`, `f
 | Milestone | Status |
 |---|---|
 | M0: Setup | In progress |
-| M1: UiPath import (#1) | Not started |
+| M1: UiPath import (#1) | In progress |
 | M2: Mapping + readiness report (#2) | Not started |
 | M3: PAD skeleton exporter | Not started |
 | M4: API + UI integration | Not started |
@@ -53,6 +53,12 @@ Research angle: the coverage report measures how well the ontology works as an i
   - Vitest 4 needs `@types/node` ≥ 20, so the back end moved to `@types/node` 24 and TypeScript 5.9, with `skipLibCheck` for the old mongoose/xmlbuilder2 type declarations
   - Fixed what the stricter check surfaced: added the missing `backend/src/interfaces/BpmoConcepts.ts`, used the enum in `ontologyParser.ts`, and fixed the `BotLinkerContext` import casing (broke on case-sensitive file systems)
   - `npx tsc --noEmit` is clean; first tests cover `flattenContextContainersInProcessTree`
+- [x] Generic sample bots: five official UiPath Studio templates in the git-ignored `samples/uipath-studio-templates/` (`REFramework` in 6 variants, `EnterExcelDataIntoWebsite`, `SaveOutlookAttachments`, `SplitExcelSheet`, `TransactionalProcess`). Their license is unspecified, so they are not committed. To fetch them again:
+  ```bash
+  git clone --filter=blob:none --no-checkout --depth 1 https://github.com/UiPath-Services/StudioTemplates samples/uipath-studio-templates
+  git -C samples/uipath-studio-templates sparse-checkout set --no-cone /REFramework/ /EnterExcelDataIntoWebsite/ /SaveOutlookAttachments/ /SplitExcelSheet/ /TransactionalProcess/
+  git -C samples/uipath-studio-templates checkout
+  ```
 - [ ] UiPath test bots under `backend/test/fixtures/uipath/` (Eero adds them; real client bots go in the git-ignored `samples/` instead):
   - [ ] classic sequence
   - [ ] modern Excel + Outlook bot
@@ -63,10 +69,20 @@ Research angle: the coverage report measures how well the ontology works as an i
 
 New folder `backend/src/importers/uipath/`.
 
-- [ ] `xamlReader.ts`: parse XAML with **xmlbuilder2** (already a dependency)
-  - Walk activity elements and descend through property elements (names containing `.`, e.g. `If.Then`, `ForEach.Body/ActivityAction`)
-  - Skip non-activity elements (`Variable`, `x:Members`, `ViewState`, `TextExpression.*`, `sads:*`)
-  - Output a neutral `XamlActivity {type (namespace URI + local name), displayName, attrs, children, slots}`
+Findings from the templates that the importer must handle:
+- `project.json` can be missing (e.g. `EnterExcelDataIntoWebsite` ships only `Main.xaml`); it carries `expressionLanguage` (VisualBasic/CSharp) and `targetFramework` (Legacy/Windows/Portable)
+- VB writes expressions as attributes (`Condition="[x]"`), C# as property elements (`If.Condition/InArgument/CSharpValue`)
+- Invoked file paths use backslashes (`Framework\Process.xaml`)
+- Flowchart and StateMachine reuse nodes through `x:Name` + `x:Reference` (also as `{x:Reference __ReferenceID0}` in attributes such as `InitialState`)
+- Modern UI scopes: `NApplicationCard` is a browser when its `TargetApp` slot has a `Url`; selectors sit in `.Target` slots (`TargetAnchorable`), not in activities
+- Scope bodies are wrapped in `ActivityAction`, whose `Argument*` slots hold `DelegateInArgument`s, not activities
+- Newer REFramework reads `Data\Config.json`, older ones `Data\Config.xlsx`; the template's `Process.xaml` is just a LogMessage and a placeholder Comment
+
+- [x] `xamlReader.ts`: parse XAML with **xmlbuilder2** (already a dependency)
+  - `readXaml(content) → XamlNode {namespace, name, displayName, annotation, attributes, text, children, slots}`; property elements (`If.Then`, `NClick.Target`) become `slots` of their owner, in document order
+  - Drops designer namespaces (`sap`, `sap2010`, `mc`, view state), `x:Members`, `*.Variables`, `TextExpression.*`, `VisualBasic.Settings`, and a leading byte-order mark
+  - `getArgument(node, property)` reads VB attribute, literal and C# property-element expressions alike; `assemblyOf(node)` gives the package of `clr-namespace` activities
+  - Tests: inline snippets plus a parse check over every template `.xaml` (skipped when `samples/` is absent)
 - [ ] `UiPathImporter.ts`: `importProject(files: Record<path, content>) → {name, description, processTree, source}`
   - [ ] Read `project.json` (name, `main`, dependencies; package names reveal apps, e.g. `UiPath.SAP.BAPI.Activities`)
   - [ ] Sequence → `{Flow:[…]}`
@@ -129,7 +145,7 @@ Front end:
 ## Verification
 
 - [ ] `npm test` in `backend/` passes, with unit tests for:
-  - [ ] `xamlReader` (property-element traversal)
+  - [x] `xamlReader` (property-element traversal)
   - [ ] `UiPathImporter` (each construct produces the expected tree; REFramework detected; Invoke inlined; cycle guard)
   - [ ] `migrationReport` (counts and coverage on the fixtures)
   - [ ] PAD linker (snapshot output; no throw on unmapped)
