@@ -1,0 +1,283 @@
+import { getArgument, XamlNode } from "./xamlReader";
+
+/** Application an activity runs in, derived from the enclosing scopes. */
+export type AppContext =
+  | "browser"
+  | "excel"
+  | "outlook"
+  | "mail"
+  | "word"
+  | "sap"
+  | "desktop";
+
+/**
+ * Applications from the enclosing scopes. UI activities target the innermost UI scope
+ * (browser, desktop app, SAP) even inside an API scope such as "Use Excel File", so the two
+ * are tracked separately.
+ */
+export interface MappingContext {
+  /** Innermost UI automation scope: "browser", "desktop" or "sap". */
+  ui?: AppContext;
+  /** Innermost API scope: "excel", "outlook", "mail" or "word". */
+  api?: AppContext;
+}
+
+export type MappingResult =
+  | { status: "mapped"; operation: string }
+  | { status: "unmapped" }
+  | { status: "manual"; reason: string }
+  | { status: "ignore" };
+
+type Rule = MappingResult | ((context: MappingContext) => MappingResult);
+
+const mapped = (operation: string): MappingResult => ({ status: "mapped", operation });
+const unmapped: MappingResult = { status: "unmapped" };
+const ignore: MappingResult = { status: "ignore" };
+const manual = (reason: string): MappingResult => ({ status: "manual", reason });
+
+const uiActivityTypes = new Set<string>();
+
+/** A UI activity whose ontology operation depends on the UI scope it runs in. */
+const ui = (operations: Partial<Record<AppContext, string>>): Rule => {
+  const rule = ({ ui: app }: MappingContext) =>
+    app && operations[app] ? mapped(operations[app]!) : unmapped;
+  uiRules.add(rule);
+  return rule;
+};
+const uiRules = new Set<Rule>();
+
+/** An API activity whose ontology operation depends on the application scope it runs in. */
+const api =
+  (operations: Partial<Record<AppContext, string>>): Rule =>
+  ({ api: app }) =>
+    app && operations[app] ? mapped(operations[app]!) : unmapped;
+
+/**
+ * Leaf activities by local XAML element name (classic and modern UiPath activities).
+ * Activities missing here are reported as unmapped, which makes them visible in the coverage report.
+ */
+const activityRules: Record<string, Rule> = {
+  // UI automation, modern (uix) and classic (ui)
+  NClick: ui({ browser: "BrowserClickButton" }),
+  Click: ui({ browser: "BrowserClickButton" }),
+  NTypeInto: ui({ browser: "BrowserInputText" }),
+  TypeInto: ui({ browser: "BrowserInputText" }),
+  TypeSecureText: ui({ browser: "BrowserInputText" }),
+  SetText: ui({ browser: "BrowserInputText" }),
+  NGetText: ui({ browser: "BrowserGetText" }),
+  GetValue: ui({ browser: "BrowserGetText" }),
+  GetFullText: ui({ browser: "BrowserGetText" }),
+  GetVisibleText: ui({ browser: "BrowserGetText" }),
+  NGetAttribute: ui({ browser: "BrowserGetAttribute" }),
+  GetAttribute: ui({ browser: "BrowserGetAttribute" }),
+  NCheck: ui({ browser: "BrowserSelectCheckbox" }),
+  Check: ui({ browser: "BrowserSelectCheckbox" }),
+  NSelectItem: ui({ browser: "BrowserSelectItem" }),
+  SelectItem: ui({ browser: "BrowserSelectItem" }),
+  SelectMultipleItems: ui({ browser: "BrowserSelectItems" }),
+  NGoToUrl: mapped("BrowserOpenURL"),
+  NavigateTo: mapped("BrowserOpenURL"),
+  CloseTab: mapped("BrowserClose"),
+  NCloseTab: mapped("BrowserClose"),
+
+  // Excel, modern (…X) and classic
+  ReadCellValueX: mapped("ExcelReadCellValue"),
+  ExcelReadCell: mapped("ExcelReadCellValue"),
+  ReadCell: mapped("ExcelReadCellValue"),
+  WriteCellX: mapped("ExcelWriteCellValue"),
+  ExcelWriteCell: mapped("ExcelWriteCellValue"),
+  WriteCell: mapped("ExcelWriteCellValue"),
+  SaveExcelFileX: mapped("ExcelSaveWorkbook"),
+  ExcelSaveWorkbook: mapped("ExcelSaveWorkbook"),
+  SaveAsPdfX: mapped("ExcelExportPDF"),
+  ExcelCloseWorkbook: mapped("ExcelClose"),
+
+  // Mail: the same modern activity serves Outlook and Gmail, so it depends on the scope
+  SendOutlookMail: mapped("OutlookSendEmail"),
+  GetOutlookMailMessages: mapped("OutlookGetEmails"),
+  SendMailX: api({ outlook: "OutlookSendEmail" }),
+  GetEmailListX: api({ outlook: "OutlookGetEmails" }),
+  DeleteMailX: api({ outlook: "OutlookDeleteEmail" }),
+
+  // Text files
+  AppendLine: mapped("AppendPlainText"),
+
+  // Logging and comments carry no behaviour to migrate
+  LogMessage: ignore,
+  WriteLine: ignore,
+  Comment: ignore,
+  CommentOut: ignore,
+  AddLogFields: ignore,
+  RemoveLogFields: ignore,
+
+  // Needs human redesign; out of scope for automatic migration
+  InvokeCode: manual("Invoke Code: custom VB/C# code"),
+  InvokeMethod: manual("Invoke Method: .NET call"),
+  InvokePowerShell: manual("Invoke PowerShell: custom script"),
+  Throw: manual("Error handling: Throw"),
+  Rethrow: manual("Error handling: Rethrow"),
+  TerminateWorkflow: manual("Error handling: Terminate Workflow"),
+  ShouldStop: manual("Orchestration: stop signal"),
+  GetQueueItem: manual("Orchestration: queue"),
+  GetTransactionItem: manual("Orchestration: queue"),
+  AddQueueItem: manual("Orchestration: queue"),
+  AddTransactionItem: manual("Orchestration: queue"),
+  SetTransactionStatus: manual("Orchestration: queue"),
+  SetTransactionProgress: manual("Orchestration: queue"),
+  GetRobotAsset: manual("Config and secrets: Orchestrator asset"),
+  GetAsset: manual("Config and secrets: Orchestrator asset"),
+  GetCredential: manual("Config and secrets: Orchestrator credential"),
+  GetRobotCredential: manual("Config and secrets: Orchestrator credential"),
+};
+
+for (const [activityType, rule] of Object.entries(activityRules)) {
+  if (uiRules.has(rule)) {
+    uiActivityTypes.add(activityType);
+  }
+}
+
+const UI_AUTOMATION_NAMESPACE = "http://schemas.uipath.com/workflow/activities/uix";
+const CLASSIC_UI_ACTIVITIES = new Set([
+  "Hover",
+  "SendHotkey",
+  "ExtractData",
+  "ElementExists",
+  "FindElement",
+  "WaitUiElementAppear",
+  "WaitUiElementVanish",
+  "OnElementAppear",
+  "TakeScreenshot",
+  "SetFocus",
+  "Highlight",
+]);
+
+/** True for activities that act on a UI element, so their context is the UI scope. */
+export function isUiActivity(node: XamlNode): boolean {
+  return (
+    node.namespace === UI_AUTOMATION_NAMESPACE ||
+    uiActivityTypes.has(node.name) ||
+    CLASSIC_UI_ACTIVITIES.has(node.name)
+  );
+}
+
+export function mapActivity(
+  activityType: string,
+  context: MappingContext
+): MappingResult {
+  const rule = activityRules[activityType];
+  if (!rule) {
+    return unmapped;
+  }
+  return typeof rule === "function" ? rule(context) : rule;
+}
+
+/** Every ontology id the table can produce, for consistency checks against the ontology. */
+export function mappedOperationIds(): string[] {
+  const contexts: MappingContext[] = [
+    {},
+    ...(["browser", "excel", "outlook", "mail", "word", "sap", "desktop"] as AppContext[]).map(
+      (app) => ({ ui: app, api: app })
+    ),
+  ];
+  const ids = new Set<string>();
+  for (const rule of Object.values(activityRules)) {
+    for (const context of contexts) {
+      const result = typeof rule === "function" ? rule(context) : rule;
+      if (result.status === "mapped") {
+        ids.add(result.operation);
+      }
+    }
+  }
+  scopeContainers.forEach((container) => ids.add(container));
+  return Array.from(ids);
+}
+
+// ================
+// APPLICATION SCOPES
+
+export interface ScopeInfo {
+  app: AppContext;
+  /** "ui" for scopes that UI activities act in (browser, desktop app, SAP), "api" for the others. */
+  kind: "ui" | "api";
+  /** Ontology context container that models the scope, if there is one. */
+  container?: string;
+  /** URL, workbook path or executable the scope targets. */
+  target?: string;
+}
+
+const scopeContainers = ["WithBrowser", "WithMicrosoftExcel"];
+
+const SAP_PATTERN = /saplogon|sapgui|sap logon|SAP Easy Access/i;
+const OUTLOOK_PATTERN = /outlook/i;
+
+function scopeForApplication(target: string | undefined, selector: string | undefined): ScopeInfo {
+  const text = `${target || ""} ${selector || ""}`;
+  if (/^https?:|^www\./i.test(target || "") || /<html/i.test(selector || "")) {
+    return { app: "browser", kind: "ui", container: "WithBrowser", target };
+  }
+  if (SAP_PATTERN.test(text)) {
+    return { app: "sap", kind: "ui", target };
+  }
+  if (/excel\.exe/i.test(text)) {
+    return { app: "excel", kind: "ui", target };
+  }
+  if (OUTLOOK_PATTERN.test(text)) {
+    return { app: "outlook", kind: "ui", target };
+  }
+  if (/winword\.exe/i.test(text)) {
+    return { app: "word", kind: "ui", target };
+  }
+  return { app: "desktop", kind: "ui", target };
+}
+
+function text(node: XamlNode, property: string): string | undefined {
+  return getArgument(node, property)?.text;
+}
+
+/**
+ * Returns scope information for activities that open or attach to an application and
+ * run their body inside it, or undefined for other activities.
+ */
+export function scopeOf(node: XamlNode): ScopeInfo | undefined {
+  switch (node.name) {
+    // Browser
+    case "OpenBrowser":
+      return { app: "browser", kind: "ui", container: "WithBrowser", target: text(node, "Url") };
+    case "BrowserScope":
+      return { app: "browser", kind: "ui", container: "WithBrowser", target: text(node, "Selector") };
+    // Modern "Use Application/Browser": the target app tells which one
+    case "NApplicationCard": {
+      const targetApp = node.slots.TargetApp?.[0];
+      return scopeForApplication(
+        targetApp && (text(targetApp, "Url") || text(targetApp, "FilePath")),
+        targetApp && text(targetApp, "Selector")
+      );
+    }
+    // Classic desktop application scopes
+    case "OpenApplication":
+      return scopeForApplication(text(node, "FileName"), text(node, "Selector"));
+    case "WindowScope":
+    case "ElementScope":
+      return scopeForApplication(undefined, text(node, "Selector"));
+    case "SAPLogon":
+    case "SAPLogin":
+      return { app: "sap", kind: "ui" };
+    // Excel
+    case "ExcelApplicationCard":
+    case "ExcelApplicationScope":
+      return { app: "excel", kind: "api", container: "WithMicrosoftExcel", target: text(node, "WorkbookPath") };
+    // Mail
+    case "OutlookApplicationCard":
+    case "OutlookMailMessagesScope":
+      return { app: "outlook", kind: "api", target: text(node, "Account") };
+    case "GmailApplicationCard":
+    case "GSuiteApplicationScope":
+      return { app: "mail", kind: "api" };
+    // Word
+    case "WordApplicationScope":
+    case "WordApplicationCard":
+      return { app: "word", kind: "api", target: text(node, "FilePath") };
+    default:
+      return undefined;
+  }
+}

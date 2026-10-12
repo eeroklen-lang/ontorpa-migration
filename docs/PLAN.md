@@ -14,8 +14,8 @@ Tick boxes as work lands. Paths are relative to the repo root (`backend/…`, `f
 | Milestone | Status |
 |---|---|
 | M0: Setup | In progress |
-| M1: UiPath import (#1) | In progress |
-| M2: Mapping + readiness report (#2) | Not started |
+| M1: UiPath import (#1) | Done |
+| M2: Mapping + readiness report (#2) | In progress |
 | M3: PAD skeleton exporter | Not started |
 | M4: API + UI integration | Not started |
 | Verification | Not started |
@@ -83,23 +83,30 @@ Findings from the templates that the importer must handle:
   - Drops designer namespaces (`sap`, `sap2010`, `mc`, view state), `x:Members`, `*.Variables`, `TextExpression.*`, `VisualBasic.Settings`, and a leading byte-order mark
   - `getArgument(node, property)` reads VB attribute, literal and C# property-element expressions alike; `assemblyOf(node)` gives the package of `clr-namespace` activities
   - Tests: inline snippets plus a parse check over every template `.xaml` (skipped when `samples/` is absent)
-- [ ] `UiPathImporter.ts`: `importProject(files: Record<path, content>) → {name, description, processTree, source}`
-  - [ ] Read `project.json` (name, `main`, dependencies; package names reveal apps, e.g. `UiPath.SAP.BAPI.Activities`)
-  - [ ] Sequence → `{Flow:[…]}`
-  - [ ] If → `Gateway_*` with Then/Else branches (concept `BinaryDecision`, label = the condition text)
-  - [ ] Switch → `CaseDecision`
-  - [ ] Parallel → `ParallelSplit`
-  - [ ] While / DoWhile / ForEach / ForEachRow → `Loop_*` with the body as its only child
-  - [ ] InvokeWorkflowFile → inline the target file as a nested subtree, with a cycle guard
-  - [ ] Flowchart → best effort: follow the FlowStep chain, turn FlowDecision into `BinaryDecision`, flag cycles as `manual`
-  - [ ] TryCatch → inline the Try part, record the Catch parts
-  - [ ] REFramework detection (see design decisions)
-- [ ] `uipathActivityMapping.ts`: table from activity type to an ontology individual, `structural`, `ignore` (LogMessage, Comment), `manual(reason)` (InvokeCode, custom packages), or a context resolver function
+- [x] `UiPathImporter.ts`: `importProject(files: Record<path, content>, {name?}) → {name, description, processTree, source}`
+  - [x] Read `project.json` (name, description, `main`, `expressionLanguage`, `targetFramework`, dependencies); works without it. Paths are made relative to the project root, so a top-level folder (as a folder upload gives) is fine
+  - [x] Sequence → flattened into its parent (equivalent to `{Flow:[…]}`, smaller tree); a branch with several steps becomes `{Flow:[…]}`, an empty one `{Flow:[]}`, as in the front end's BPMN parser
+  - [x] If → `Gateway_*` with Then/Else branches (concept `BinaryDecision`). Label = DisplayName (falls back to the condition); the condition goes to `source.expression`
+  - [x] Switch → `CaseDecision`
+  - [x] Parallel → `ParallelSplit`
+  - [x] While / DoWhile / ForEach / ForEachRow / ExcelForEachRow / OutlookForEachMail / … → `Loop_*` with the body as its only child (`unmapped` until the ontology has loops)
+  - [x] InvokeWorkflowFile → inline the target file (paths relative to the project root); cycle guard, missing files and expression paths become `manual` nodes
+  - [x] Flowchart → best effort: branches run to the first node all of them reach; a jump back on the current path becomes a `manual` "loop back" node, a jump into another branch a `manual` "jump" node
+  - [x] TryCatch → inline Try and Finally, record the Catch parts in `source.catches`
+  - [x] REFramework detection (state names, or `Framework/GetTransactionData.xaml` + `SetTransactionStatus.xaml`). Imported as InitAllApplications → `Loop_*` "Process each transaction" (Process.xaml, `structural`) → CloseAllApplications; other framework files and Config files are listed in `source.reframework`
+  - [x] StateMachine (non-REFramework) → one `manual` node plus the states' Entry/Exit in discovery order
+  - [x] RetryScope → body inlined, retry policy recorded in `source.notes`
+- [x] `uipathActivityMapping.ts`: table from activity type to an ontology individual, `ignore` (logging, comments, Comment Out), `manual(reason)` (Invoke Code/Method, Throw, Orchestrator queues and assets), or a context resolver; unknown types are `unmapped`
+  - UI and API contexts are tracked separately: UI activities resolve by the innermost UI scope (browser/desktop/SAP) even inside "Use Excel File"; mail activities by the innermost API scope (Outlook/Gmail)
+  - Scopes: `NApplicationCard` (browser when its TargetApp has a URL or `<html>` selector, SAP for `saplogon.exe`, else desktop), `OpenBrowser`, `BrowserScope`, `OpenApplication`, `WindowScope`, Excel, Outlook, Gmail and Word scopes. Browser and Excel scopes become `WithBrowser` / `WithMicrosoftExcel` containers; the rest are `structural` nodes with their context
+  - Selector count = UI activities with a `Target` slot or `Selector` attribute
+- Also: back end TypeScript target raised from ES6 to ES2020 (Node 25 runs it natively; needed for `flatMap` etc.)
+- Tests: 23 importer tests (each construct on inline projects, plus REFramework, Excel-to-website and Flowchart templates)
 
 ## M2: Mapping + readiness report (issue #2)
 
-- [ ] `backend/src/resources/rpa-operations.json`: back-end copy of the ontology
-- [ ] `backend/src/utils/ontologyIndex.ts`: load it into `id → {concept, automates, bpmoConcept}`
+- [x] `backend/src/resources/rpa-operations.json`: back-end copy of the ontology
+- [x] `backend/src/utils/ontologyIndex.ts`: load it into `id → {concept, automates, bpmoConcept}`; `isOntologyOperation(id)` for consistency checks
 - [ ] `backend/src/analysis/migrationReport.ts`: `buildMigrationReport(processTree, source, target="pad")` returns, per bot:
   - totals for mapped / ontology-only (no PAD mapping) / unmapped / manual
   - **automatic-migration coverage %**
@@ -137,6 +144,7 @@ Front end:
 - [ ] `frontend/src/api/botModelApi.ts`: add `importUiPath` and `getMigrationReport`
 - [ ] `frontend/src/components/BotOverview/BotOverviewCard.vue` and `frontend/src/utils/utils.ts`: "Power Automate Desktop" export (`.txt`) and a report link
 - [ ] Tolerate unknown or empty concepts so imported bots don't crash metrics and abstraction:
+  - [ ] imported trees have no `dataResourceInfo` / `transientDataInfo`, which the front end's `ProcessTree` type requires (`frontend/src/interfaces/BotModel.ts`)
   - [ ] `frontend/src/utils/ontologyParser.ts:258-277` (`getOperationBranch`)
   - [ ] `frontend/src/utils/abstractionContextAnalysis.ts:23-26`
   - [ ] `frontend/src/utils/BpmnModdleParser.ts:197`
@@ -146,10 +154,10 @@ Front end:
 
 - [ ] `npm test` in `backend/` passes, with unit tests for:
   - [x] `xamlReader` (property-element traversal)
-  - [ ] `UiPathImporter` (each construct produces the expected tree; REFramework detected; Invoke inlined; cycle guard)
+  - [x] `UiPathImporter` (each construct produces the expected tree; REFramework detected; Invoke inlined; cycle guard)
   - [ ] `migrationReport` (counts and coverage on the fixtures)
   - [ ] PAD linker (snapshot output; no throw on unmapped)
-  - [ ] every ontology id in `uipathActivityMapping` and `padMapping` exists in `rpa-operations.json`
+  - [ ] every ontology id in `uipathActivityMapping` and `padMapping` exists in `rpa-operations.json` (`uipathActivityMapping` done; `padMapping` with M3)
 - [ ] `npm run import:uipath samples/*`: each real sample imports without errors, and the portfolio table looks plausible against a manual read of one bot
 - [ ] End to end: start Mongo (`docker run -d -p 27017:27017 mongo`), run back end and front end with `npm run dev`, import a sample at `/import`, open its report, download the PAD export
 - [ ] On a Windows machine, paste the exported skeleton into the Power Automate Desktop designer and confirm it parses. Mapped actions appear, only TODO parameters are flagged. Fix any action names in `padMapping.ts` that PAD rejects
