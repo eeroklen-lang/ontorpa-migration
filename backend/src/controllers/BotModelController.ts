@@ -2,6 +2,11 @@ import { Request, Response } from "express";
 import BotModel from "../models/BotModel";
 import BaseController from "../controllers/BaseController";
 import BotLinkerContext from "../botLinkers/BotLinkerContext";
+import {
+  importUiPathBot,
+  MigrationRequestError,
+  migrationReportFor,
+} from "../services/migrationService";
 
 class BotModelController extends BaseController {
   getBotModels = async (req: Request, res: Response): Promise<void | any> => {
@@ -65,10 +70,41 @@ class BotModelController extends BaseController {
       );
 
       if (!deletedBotModel) {
-        res.status(404).send("No item found");
+        return res.status(404).send("No item found");
       }
       res.status(200).send();
     } catch (error) {
+      return BaseController.fail(res, error);
+    }
+  };
+
+  importUiPath = async (req: Request, res: Response): Promise<void | any> => {
+    try {
+      const { bot, report } = importUiPathBot(req.body?.files, req.body?.name);
+      const newBot = new BotModel(bot);
+      await newBot.save();
+      res.send({ botModel: newBot, report });
+    } catch (error) {
+      if (error instanceof MigrationRequestError) {
+        return BaseController.clientError(res, error.message);
+      }
+      return BaseController.fail(res, error);
+    }
+  };
+
+  getMigrationReport = async (req: Request, res: Response): Promise<void | any> => {
+    try {
+      const botModel = await BotModel.findById(req.params.BotModelId);
+
+      if (!botModel) {
+        return BaseController.notFound(res);
+      }
+
+      res.send(migrationReportFor(botModel, req.query.target?.toString()));
+    } catch (error) {
+      if (error instanceof MigrationRequestError) {
+        return BaseController.clientError(res, error.message);
+      }
       return BaseController.fail(res, error);
     }
   };

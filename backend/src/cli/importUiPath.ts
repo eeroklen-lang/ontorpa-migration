@@ -1,8 +1,8 @@
 import fs from "fs";
 import path from "path";
-import { buildMigrationReport, MigrationTarget } from "../analysis/migrationReport";
+import { buildMigrationReport } from "../analysis/migrationReport";
+import { migrationTargets } from "../analysis/migrationTargets";
 import { generatePadFlow } from "../botLinkers/powerAutomateDesktopLinker/PowerAutomateDesktopLinker";
-import { padOperationIds } from "../botLinkers/powerAutomateDesktopLinker/padMapping";
 import { importProject } from "../importers/uipath/UiPathImporter";
 import {
   portfolioCsv,
@@ -22,10 +22,6 @@ prints its process tree and migration report, and ends with a portfolio table.
   --out <dir>   also write <bot>.json (import result + report), <bot>.pad.txt,
                 portfolio.md and portfolio.csv`;
 
-const PAD_TARGET: MigrationTarget = {
-  name: "Power Automate Desktop",
-  operations: padOperationIds(),
-};
 
 // Folders that never contain workflows: Studio metadata, git, dependencies
 const SKIPPED_DIRECTORIES = /^(\.|node_modules$)/;
@@ -70,7 +66,7 @@ function main(args: string[]) {
     for (const root of roots) {
       const displayPath = path.relative(process.cwd(), root) || ".";
       const imported = importProject(readProjectFiles(root), { name: fallbackName(root, folder) });
-      const report = buildMigrationReport(imported, PAD_TARGET);
+      const report = buildMigrationReport(imported, migrationTargets.pad);
       const padFlow = generatePadFlow(imported.name, imported.processTree);
       rows.push({ path: displayPath, report });
 

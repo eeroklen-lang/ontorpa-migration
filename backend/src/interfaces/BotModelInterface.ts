@@ -1,8 +1,12 @@
 interface IBotModel {
   name: string;
   description?: string;
-  model: string;
+  /** BPMN diagram (JSON string); imported bots have none until a diagram is generated. */
+  model?: string;
+  /** Process tree (JSON string of IProcessTree). */
   processTree: string;
+  /** For imported bots: information about the source project (JSON string). */
+  source?: string;
 }
 
 /**

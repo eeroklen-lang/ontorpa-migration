@@ -9,6 +9,16 @@ const router: express.Router = express.Router();
 router.get("/", BotModelController.getBotModels);
 
 /**
+ * Import a UiPath project as a new BotModel. Body: { files: { path: content }, name? }
+ */
+router.post("/import/uipath", BotModelController.importUiPath);
+
+/**
+ * Get the migration report of a BotModel. Query: target=pad (default) or none
+ */
+router.get("/:BotModelId/migrationReport", BotModelController.getMigrationReport);
+
+/**
  * Get a BotModel
  */
 router.get("/:BotModelId", BotModelController.getBotModel);

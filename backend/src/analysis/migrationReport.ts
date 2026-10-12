@@ -107,12 +107,14 @@ const PACKAGE_NAMES: Record<string, string> = {
  * applications are involved, and what needs manual work.
  */
 export function buildMigrationReport(
-  imported: { name: string; processTree: IProcessTree; source: UiPathProjectInfo },
+  imported: { name: string; processTree: IProcessTree; source?: UiPathProjectInfo },
   target?: MigrationTarget
 ): MigrationReport {
-  const { source } = imported;
+  // Bots modeled in OntoRPA have no source project, and their nodes no mapping status
+  const source = imported.source ?? modeledBotInfo();
   const nodes = Object.values(imported.processTree.nodeInfo);
-  const withStatus = (status: string) => nodes.filter((n) => n.mappingStatus === status);
+  const statusOf = (n: IProcessTreeNodeInfo) => n.mappingStatus ?? (n.concept ? "mapped" : "unmapped");
+  const withStatus = (status: string) => nodes.filter((n) => statusOf(n) === status);
 
   const mapped = withStatus("mapped");
   const unmapped = withStatus("unmapped");
@@ -163,6 +165,20 @@ export function buildMigrationReport(
     report.coverage.target = share(generated.length);
   }
   return report;
+}
+
+function modeledBotInfo(): UiPathProjectInfo {
+  return {
+    vendor: "UiPath",
+    main: "",
+    dependencies: {},
+    workflowFiles: [],
+    importedFiles: [],
+    missingFiles: [],
+    catches: [],
+    notes: [],
+    selectorCount: 0,
+  };
 }
 
 function countUnmapped(nodes: IProcessTreeNodeInfo[]): MigrationReport["unmappedActivities"] {
