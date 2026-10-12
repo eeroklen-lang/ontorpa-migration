@@ -20,10 +20,11 @@ function newContextAnalysis(
 
   // First, we iterate over all nodes and add a context if it can be derived from the node and its associations itself
   for (const node in tree.nodeInfo) {
+    // Undefined for context containers and imported steps without an ontology operation
     const concept = rpaOperations.individuals[tree.nodeInfo[node].concept];
     const context: OperationContext = { software: "", data: "" };
 
-    if (concept.automates) {
+    if (concept?.automates) {
       // If element automates a specific software, use for context
       context.software = concept.automates.id;
     }
@@ -122,16 +123,16 @@ function analyzeContextsOfTreeStructure(
     const concept = rpaOperations.individuals[nodeInfo[tree].concept];
     const context: OperationContext = { software: "", data: "" };
 
-    if (concept.automates) {
+    if (concept?.automates) {
       // If element automates a specific software, use for context
       context.software = concept.automates.id;
     } else {
-      // Otherwise copy context from previous operation
-      context.software = operationContexts[latestOperation].software;
+      // Otherwise copy context from previous operation, if there is one
+      context.software = operationContexts[latestOperation]?.software ?? "";
       // operationContexts[tree] = operationContexts[latestOperation];
     }
     if (
-      dataContextSwitchOperations.includes(concept.id) ||
+      (concept && dataContextSwitchOperations.includes(concept.id)) ||
       !operationContexts[latestOperation] ||
       context.software !== operationContexts[latestOperation].software
     ) {

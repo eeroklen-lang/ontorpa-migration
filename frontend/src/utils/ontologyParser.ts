@@ -256,7 +256,13 @@ function extendId(id: string): string {
 }
 
 export function getOperationBranch(operation: string): string[] {
-  var currentConcept: string | undefined = operation;
+  // Context containers and imported steps without an ontology operation have no operation branch
+  if (!(operation in rpaOperations.individuals)) {
+    if (operation in rpaContextContainers) {
+      return [operation, "rpa-context-container"];
+    }
+    return [operation || "unmapped-operation"];
+  }
   // Add operation itself (leaf) to branch list
   const branch = [operation];
   // Add concept of operation to branch list

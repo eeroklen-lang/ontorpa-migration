@@ -165,7 +165,7 @@ export default defineComponent({
     },
   },
   computed: {
-    operationsAvailableForShape(): RpaOperation[] | RpaContextContainer[] {
+    operationsAvailableForShape(): (RpaOperation | RpaContextContainer)[] {
       let bpmoConceptForCurrentShape: BpmoConcept | undefined = undefined;
       const currentBO = this.getCurrentBusinessObject();
       for (const bpmoConcept in bpmnMapping) {
@@ -176,7 +176,13 @@ export default defineComponent({
       if (!bpmoConceptForCurrentShape) {
         return [];
       } else if (bpmoConceptForCurrentShape === BpmoConcept.CompoundActivity) {
-        return Object.values(rpaContextContainers);
+        // Sub-processes are context containers or compound operations such as loops
+        return [
+          ...Object.values(rpaContextContainers),
+          ...Object.values(this.operations).filter(
+            (operation) => operation.bpmoConcept === BpmoConcept.CompoundActivity
+          ),
+        ];
       } else {
         return Object.values(this.operations).filter(
           (operation) => operation.bpmoConcept === bpmoConceptForCurrentShape

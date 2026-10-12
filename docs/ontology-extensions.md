@@ -26,4 +26,4 @@ Effect on ontology coverage of the templates (Excel-to-website / Outlook attachm
 
 Known gaps without evidence yet: SAP operations, generic desktop UI operations (`click-button`, `fill-text-box` and `press-key` exist as classes without individuals).
 
-Front-end follow-ups (M4): the modeler's properties panel lists only context containers for sub-processes, so a loop dragged from the sidebar cannot be changed to another operation there; loops are drawn as plain expanded sub-processes without a loop marker.
+Front end: the modeler's properties panel offers the loop operations for sub-processes (done in M4). Loops are still drawn as plain expanded sub-processes without a loop marker.

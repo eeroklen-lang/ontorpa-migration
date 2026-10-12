@@ -3,6 +3,7 @@ import BotModel, {
   parseBotModel,
   stringifyBotModel,
 } from "../interfaces/BotModel";
+import { MigrationReport } from "../interfaces/MigrationReport";
 
 export default {
   async getBotModels(): Promise<BotModel[]> {
@@ -54,6 +55,34 @@ export default {
     );
 
     return res.data;
+  },
+  /**
+   * Imports a UiPath project as a new bot.
+   *
+   * @param files - file contents by path relative to the uploaded folder
+   */
+  async importUiPath(
+    files: Record<string, string>,
+    name?: string
+  ): Promise<{ botModel: BotModel; report: MigrationReport }> {
+    const res = await axios.post(
+      "http://localhost:3001/api/BotModels/import/uipath",
+      { files, name }
+    );
+    return {
+      botModel: parseBotModel(res.data.botModel as BotModel),
+      report: res.data.report as MigrationReport,
+    };
+  },
+  async getMigrationReport(
+    botModelId: string,
+    target = "pad"
+  ): Promise<MigrationReport> {
+    const res = await axios.get(
+      `http://localhost:3001/api/BotModels/${botModelId}/migrationReport`,
+      { params: { target } }
+    );
+    return res.data as MigrationReport;
   },
   async deleteBotModel(botModelId: string): Promise<void> {
     await axios.delete(`http://localhost:3001/api/BotModels/${botModelId}`);

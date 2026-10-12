@@ -17,7 +17,7 @@ Tick boxes as work lands. Paths are relative to the repo root (`backend/…`, `f
 | M1: UiPath import (#1) | Done |
 | M2: Mapping + readiness report (#2) | Done (target coverage follows with M3) |
 | M3: PAD skeleton exporter | Done (Robin names not yet validated in PAD) |
-| M4: API + UI integration | Not started |
+| M4: API + UI integration | Done (BPMN generator stretch open) |
 | Verification | Not started |
 
 ## Context
@@ -136,23 +136,29 @@ Findings from the templates that the importer must handle:
 ## M4: API + UI integration
 
 Back end:
-- [ ] `backend/src/models/BotModel.ts`: add an optional `source` field; make `model` optional until BPMN generation exists
-- [ ] Route + controller: `POST /api/botModels/import/uipath` (body `{files}`)
-- [ ] Route + controller: `GET /api/botModels/:id/migrationReport?target=pad`
-- [ ] Fix the double-send in delete (`BotModelController.ts:67-70`)
+- [x] `backend/src/models/BotModel.ts`: optional `source` field (JSON string of the import's project info); `model` optional until BPMN generation exists
+- [x] Route + controller: `POST /api/botModels/import/uipath` (body `{files, name?}`; an explicit name overrides project.json) → `{botModel, report}`; 400 for uploads without workflows
+- [x] Route + controller: `GET /api/botModels/:id/migrationReport?target=pad|none`; works for modeled bots too (nodes without `mappingStatus` count as mapped when they have a concept)
+  - Logic in `backend/src/services/migrationService.ts` (tested without Mongo); targets in `backend/src/analysis/migrationTargets.ts`
+  - JSON body limit raised to 50 MB for project uploads (`server.ts`)
+- [x] Fix the double-send in delete (`BotModelController.ts`)
+- Verified end to end against the dev server and local Mongo: import, report, `?type=pad` export, 400s, delete (test bots removed afterwards)
 
 Front end:
-- [ ] `frontend/src/views/BotImport.vue` (route `/import`): `<input webkitdirectory>` reads the `.xaml` files and `project.json`, then posts them
-- [ ] `frontend/src/views/BotMigrationReport.vue` (route `/migration/:modelId`)
-- [ ] `frontend/src/api/botModelApi.ts`: add `importUiPath` and `getMigrationReport`
-- [ ] `frontend/src/components/BotOverview/BotOverviewCard.vue` and `frontend/src/utils/utils.ts`: "Power Automate Desktop" export (`.txt`) and a report link
-- [ ] Tolerate unknown or empty concepts so imported bots don't crash metrics and abstraction:
-  - [ ] imported trees have no `dataResourceInfo` / `transientDataInfo`, which the front end's `ProcessTree` type requires (`frontend/src/interfaces/BotModel.ts`)
-- [ ] Loops in the modeler: the properties panel lists only context containers for sub-processes (`BotModelerPropertiesPanel.vue`), so it should also offer the loop operations; optionally draw a loop marker
-  - [ ] `frontend/src/utils/ontologyParser.ts:258-277` (`getOperationBranch`)
-  - [ ] `frontend/src/utils/abstractionContextAnalysis.ts:23-26`
-  - [ ] `frontend/src/utils/BpmnModdleParser.ts:197`
-- [ ] Stretch: `backend/src/importers/bpmnGenerator.ts`, process tree → BPMN XML with simple auto-layout and `rpa:operation` attributes, so imported bots open in the modeler, metrics and abstraction views (reuses the existing metrics for issue #10 later)
+- [x] `frontend/src/views/BotImport.vue` (route `/import`): `<input webkitdirectory>` reads `.xaml` and `.json` files (others by name only, metadata folders skipped), optional bot name, then posts them and opens the report
+- [x] `frontend/src/views/BotMigrationReport.vue` (route `/migration/:modelId`): coverage tiles (ontology, PAD), process tree with status marks, unmapped activities, applications with evidence, manual work, source project, PAD download
+- [x] `frontend/src/api/botModelApi.ts`: `importUiPath` and `getMigrationReport`; report type in `frontend/src/interfaces/MigrationReport.ts`
+- [x] `frontend/src/components/BotOverview/BotOverviewCard.vue` and `frontend/src/utils/utils.ts`: "Power Automate Desktop" export (`.txt`), a report link on every bot; imported bots open the report instead of the modeler and hide the abstraction link (abstraction is only applied to the diagram). Overview has an "Import UiPath" tile
+- [x] Tolerate imported bots in the existing views:
+  - [x] `parseBotModel` accepts bots without a diagram and fills in the missing `dataResourceInfo` / `transientDataInfo`
+  - [x] `getOperationBranch` (`ontologyParser.ts`) returns a short branch for unmapped steps and context containers instead of throwing
+  - [x] `abstractionContextAnalysis.ts` accepts unknown concepts and a first step without software context
+  - [ ] `BpmnModdleParser.ts` still throws on elements without an operation; only matters once imported bots get a diagram (stretch below)
+  - Checked: the front end's metrics calculator and abstractor run on imported templates; the metrics page shows the metrics of an imported bot (no diagram)
+- [x] Loops in the modeler: the properties panel offers the loop operations (and any other `CompoundActivity` operation) for sub-processes, next to the context containers. A loop marker is not drawn yet
+- Checked with headless Chrome screenshots against the running dev servers: overview, import page, report page (all-mapped bot and a bot with unmapped and manual steps), metrics page
+- `npm run build` in `frontend/` still fails on the 89 type errors that were there before; the changes add none (88 now)
+- [ ] Stretch: `backend/src/importers/bpmnGenerator.ts`, process tree → BPMN XML with simple auto-layout and `rpa:operation` attributes, so imported bots open in the modeler and abstraction views (reuses the existing metrics for issue #10 later)
 
 ## Verification
 

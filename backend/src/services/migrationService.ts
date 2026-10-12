@@ -10,6 +10,7 @@ export class MigrationRequestError extends Error {}
  * for Power Automate Desktop.
  *
  * @param files - file contents by path, as uploaded from a project folder
+ * @param name - bot name; overrides the name in project.json
  */
 export function importUiPathBot(
   files: unknown,
@@ -27,6 +28,9 @@ export function importUiPathBot(
   }
 
   const imported = importProject(files as Record<string, string>, { name });
+  if (name?.trim()) {
+    imported.name = name.trim();
+  }
   return {
     bot: {
       name: imported.name,

@@ -26,6 +26,12 @@ describe("importUiPathBot", () => {
     expect(report.totals).toMatchObject({ steps: 2, mapped: 1, unmapped: 1 });
   });
 
+  it("prefers an explicit name over the one in project.json", () => {
+    const files = { "project.json": JSON.stringify({ name: "From project" }), "Main.xaml": MAIN };
+    expect(importUiPathBot(files, "Chosen").bot.name).toBe("Chosen");
+    expect(importUiPathBot(files, " ").bot.name).toBe("From project");
+  });
+
   it.each([
     [undefined, "Expected files"],
     [["Main.xaml"], "Expected files"],
