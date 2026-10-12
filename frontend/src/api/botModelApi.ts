@@ -5,9 +5,13 @@ import BotModel, {
 } from "../interfaces/BotModel";
 import { MigrationReport } from "../interfaces/MigrationReport";
 
+// The back end runs on port 3001 of the same machine that serves the page, so the app also
+// works when opened from another computer (e.g. http://192.168.1.101:5173)
+const API_URL = `${window.location.protocol}//${window.location.hostname}:3001/api/BotModels`;
+
 export default {
   async getBotModels(): Promise<BotModel[]> {
-    const res = await axios.get("http://localhost:3001/api/BotModels");
+    const res = await axios.get(API_URL);
 
     const botModels: BotModel[] = (res.data as BotModel[]).map((botModel) =>
       parseBotModel(botModel)
@@ -16,7 +20,7 @@ export default {
   },
   async getBotModel(botModelId: string): Promise<BotModel> {
     const res = await axios.get(
-      `http://localhost:3001/api/BotModels/${botModelId}`
+      `${API_URL}/${botModelId}`
     );
 
     return parseBotModel(res.data as BotModel);
@@ -26,7 +30,7 @@ export default {
     targetRpaTool: string
   ): Promise<Blob> {
     const res = await axios.get(
-      `http://localhost:3001/api/BotModels/${botModelId}`,
+      `${API_URL}/${botModelId}`,
       {
         params: {
           type: targetRpaTool,
@@ -40,7 +44,7 @@ export default {
     botModel = stringifyBotModel(botModel);
 
     const res = await axios.post(
-      "http://localhost:3001/api/BotModels",
+      API_URL,
       botModel
     );
 
@@ -50,7 +54,7 @@ export default {
     botModel = stringifyBotModel(botModel);
 
     const res = await axios.patch(
-      `http://localhost:3001/api/BotModels/${botModel._id}`,
+      `${API_URL}/${botModel._id}`,
       botModel
     );
 
@@ -66,7 +70,7 @@ export default {
     name?: string
   ): Promise<{ botModel: BotModel; report: MigrationReport }> {
     const res = await axios.post(
-      "http://localhost:3001/api/BotModels/import/uipath",
+      `${API_URL}/import/uipath`,
       { files, name }
     );
     return {
@@ -79,13 +83,13 @@ export default {
     target = "pad"
   ): Promise<MigrationReport> {
     const res = await axios.get(
-      `http://localhost:3001/api/BotModels/${botModelId}/migrationReport`,
+      `${API_URL}/${botModelId}/migrationReport`,
       { params: { target } }
     );
     return res.data as MigrationReport;
   },
   async deleteBotModel(botModelId: string): Promise<void> {
-    await axios.delete(`http://localhost:3001/api/BotModels/${botModelId}`);
+    await axios.delete(`${API_URL}/${botModelId}`);
 
     return;
   },
