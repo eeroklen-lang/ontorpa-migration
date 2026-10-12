@@ -47,10 +47,13 @@ Research angle: the coverage report measures how well the ontology works as an i
 - [x] `npm install` in `backend/` and `frontend/`
 - [x] Plan saved in the repo (`docs/PLAN.md`)
 - [x] Commit the updated `package-lock.json` files
-- [ ] Create the feature branch `uipath-migration`
-- [ ] Confirm `npm run dev` in `backend/` works on Node 25; if `ts-node-dev@1.1.8` fails, switch the script to `tsx watch`
-- [ ] Add `vitest` to `backend/` and a `test` script
-- [ ] Hand-write synthetic fixtures under `backend/test/fixtures/uipath/`:
+- [x] Create the feature branch `uipath-migration`
+- [x] Confirm `npm run dev` in `backend/` works on Node 25 (it does with `tsnd`, no switch to `tsx` needed)
+- [x] Add `vitest` to `backend/` and a `test` script (`npm test`, `npm run test:watch`; config in `backend/vitest.config.mts`)
+  - Vitest 4 needs `@types/node` ≥ 20, so the back end moved to `@types/node` 24 and TypeScript 5.9, with `skipLibCheck` for the old mongoose/xmlbuilder2 type declarations
+  - Fixed what the stricter check surfaced: added the missing `backend/src/interfaces/BpmoConcepts.ts`, used the enum in `ontologyParser.ts`, and fixed the `BotLinkerContext` import casing (broke on case-sensitive file systems)
+  - `npx tsc --noEmit` is clean; first tests cover `flattenContextContainersInProcessTree`
+- [ ] UiPath test bots under `backend/test/fixtures/uipath/` (Eero adds them; real client bots go in the git-ignored `samples/` instead):
   - [ ] classic sequence
   - [ ] modern Excel + Outlook bot
   - [ ] REFramework skeleton

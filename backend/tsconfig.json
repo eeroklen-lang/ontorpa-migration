@@ -12,6 +12,7 @@
     "emitDecoratorMetadata": true,
     "useUnknownInCatchVariables": false,
     "sourceMap": true,
+    "skipLibCheck": true,
     "baseUrl": "."
   },
   "include": ["src/**/*.ts"],
