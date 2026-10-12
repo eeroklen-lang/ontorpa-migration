@@ -107,13 +107,14 @@ Findings from the templates that the importer must handle:
 
 - [x] `backend/src/resources/rpa-operations.json`: back-end copy of the ontology
 - [x] `backend/src/utils/ontologyIndex.ts`: load it into `id → {concept, automates, bpmoConcept}`; `isOntologyOperation(id)` for consistency checks
-- [ ] `backend/src/analysis/migrationReport.ts`: `buildMigrationReport(processTree, source, target="pad")` returns, per bot:
-  - totals for mapped / ontology-only (no PAD mapping) / unmapped / manual
-  - **automatic-migration coverage %**
-  - unmapped activity types with counts
-  - applications touched (ontology `automates` plus dependencies from `project.json`)
-  - manual items: catches, Invoke Code, REFramework config/queues, selector count
-- [ ] `backend/src/cli/importUiPath.ts` (script `import:uipath <dir…>`): run import + report over each sample; write per-bot JSON and a **portfolio summary table** (Markdown/CSV), which is the thesis evaluation table
+- [x] `backend/src/analysis/migrationReport.ts`: `buildMigrationReport(importResult, target?)` returns, per bot:
+  - totals for mapped / ontology-only (no target mapping) / unmapped / manual (structural scopes are not counted as steps)
+  - **coverage**: ontology coverage now; target (PAD) coverage once M3 provides the PAD mapping as a `MigrationTarget`
+  - unmapped activity types with counts and context
+  - applications touched, with evidence: ontology `automates` of mapped operations, scope contexts, and `project.json` dependencies
+  - manual work: manual nodes with reasons, catches, notes (retry scopes), REFramework config and framework files, selector count
+- [x] `backend/src/cli/importUiPath.ts` (script `npm run import:uipath -- [--summary] [--out <dir>] <folder>…`): finds every project (folder with `project.json` or `Main.xaml`) below the given folders, prints the report and the process tree, and ends with the **portfolio summary table**; `--out` writes per-bot JSON plus `portfolio.md` / `portfolio.csv`. Usage is in the root README
+  - First run over the templates (11 bots): Excel-to-website 82 % ontology coverage, TransactionalProcess 50 %, SplitExcelSheet 8 %, SaveOutlookAttachments 0 %; the REFramework variants have no steps because the template's Process.xaml is a placeholder
 - [ ] **Checkpoint:** run on the samples, then decide together which ontology extensions the unmapped list justifies. Likely candidates:
   - a `control-flow-loop` class (`ForEachLoop`, `ConditionalLoop`)
   - generic desktop UI operations (click-button, fill-text-box and press-key already exist as classes without individuals)

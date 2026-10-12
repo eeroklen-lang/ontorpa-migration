@@ -6,6 +6,7 @@
   "main": "server.ts",
   "scripts": {
     "dev": "tsnd --respawn src/server.ts",
+    "import:uipath": "tsnd --quiet --transpile-only src/cli/importUiPath.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
