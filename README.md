@@ -9,6 +9,8 @@ UiPath .xaml  →  ontology-based process tree  →  migration readiness report
                                                →  Power Automate Desktop skeleton flow
 ```
 
+The development plan and its progress are tracked in [`docs/PLAN.md`](docs/PLAN.md).
+
 ## Layout
 
 | Folder | Contents |
