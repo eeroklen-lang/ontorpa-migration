@@ -1,0 +1,11 @@
+# Dependencies and build output
+node_modules/
+dist/
+build/
+
+# Local environment
+.env
+.DS_Store
+
+# Real UiPath bots used for evaluation (confidential, never commit)
+samples/
