@@ -1,4 +1,4 @@
-import { getArgument, XamlNode } from "./xamlReader";
+import { getArgument, XamlExpression, XamlNode } from "./xamlReader";
 
 /** Application an activity runs in, derived from the enclosing scopes. */
 export type AppContext =
@@ -246,7 +246,7 @@ export interface ScopeInfo {
   /** Ontology context container that models the scope, if there is one. */
   container?: string;
   /** URL, workbook path or executable the scope targets. */
-  target?: string;
+  target?: XamlExpression;
 }
 
 const scopeContainers = ["WithBrowser", "WithMicrosoftExcel"];
@@ -254,9 +254,12 @@ const scopeContainers = ["WithBrowser", "WithMicrosoftExcel"];
 const SAP_PATTERN = /saplogon|sapgui|sap logon|SAP Easy Access/i;
 const OUTLOOK_PATTERN = /outlook/i;
 
-function scopeForApplication(target: string | undefined, selector: string | undefined): ScopeInfo {
-  const text = `${target || ""} ${selector || ""}`;
-  if (/^https?:|^www\./i.test(target || "") || /<html/i.test(selector || "")) {
+function scopeForApplication(
+  target: XamlExpression | undefined,
+  selector: string | undefined
+): ScopeInfo {
+  const text = `${target?.text || ""} ${selector || ""}`;
+  if (/^https?:|^www\./i.test(target?.text || "") || /<html/i.test(selector || "")) {
     return { app: "browser", kind: "ui", container: "WithBrowser", target };
   }
   if (SAP_PATTERN.test(text)) {
@@ -274,8 +277,8 @@ function scopeForApplication(target: string | undefined, selector: string | unde
   return { app: "desktop", kind: "ui", target };
 }
 
-function text(node: XamlNode, property: string): string | undefined {
-  return getArgument(node, property)?.text;
+function arg(node: XamlNode, property: string): XamlExpression | undefined {
+  return getArgument(node, property);
 }
 
 /**
@@ -286,41 +289,41 @@ export function scopeOf(node: XamlNode): ScopeInfo | undefined {
   switch (node.name) {
     // Browser
     case "OpenBrowser":
-      return { app: "browser", kind: "ui", container: "WithBrowser", target: text(node, "Url") };
+      return { app: "browser", kind: "ui", container: "WithBrowser", target: arg(node, "Url") };
     case "BrowserScope":
-      return { app: "browser", kind: "ui", container: "WithBrowser", target: text(node, "Selector") };
+      return { app: "browser", kind: "ui", container: "WithBrowser", target: arg(node, "Selector") };
     // Modern "Use Application/Browser": the target app tells which one
     case "NApplicationCard": {
       const targetApp = node.slots.TargetApp?.[0];
       return scopeForApplication(
-        targetApp && (text(targetApp, "Url") || text(targetApp, "FilePath")),
-        targetApp && text(targetApp, "Selector")
+        targetApp && (arg(targetApp, "Url") || arg(targetApp, "FilePath")),
+        targetApp && arg(targetApp, "Selector")?.text
       );
     }
     // Classic desktop application scopes
     case "OpenApplication":
-      return scopeForApplication(text(node, "FileName"), text(node, "Selector"));
+      return scopeForApplication(arg(node, "FileName"), arg(node, "Selector")?.text);
     case "WindowScope":
     case "ElementScope":
-      return scopeForApplication(undefined, text(node, "Selector"));
+      return scopeForApplication(undefined, arg(node, "Selector")?.text);
     case "SAPLogon":
     case "SAPLogin":
       return { app: "sap", kind: "ui" };
     // Excel
     case "ExcelApplicationCard":
     case "ExcelApplicationScope":
-      return { app: "excel", kind: "api", container: "WithMicrosoftExcel", target: text(node, "WorkbookPath") };
+      return { app: "excel", kind: "api", container: "WithMicrosoftExcel", target: arg(node, "WorkbookPath") };
     // Mail
     case "OutlookApplicationCard":
     case "OutlookMailMessagesScope":
-      return { app: "outlook", kind: "api", target: text(node, "Account") };
+      return { app: "outlook", kind: "api", target: arg(node, "Account") };
     case "GmailApplicationCard":
     case "GSuiteApplicationScope":
       return { app: "mail", kind: "api" };
     // Word
     case "WordApplicationScope":
     case "WordApplicationCard":
-      return { app: "word", kind: "api", target: text(node, "FilePath") };
+      return { app: "word", kind: "api", target: arg(node, "FilePath") };
     default:
       return undefined;
   }

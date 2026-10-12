@@ -1,5 +1,6 @@
 import BotLinker from "src/interfaces/BotLinkerStrategyInterface";
 import IBotModel from "src/interfaces/BotModelInterface";
+import PowerAutomateDesktopLinker from "./powerAutomateDesktopLinker/PowerAutomateDesktopLinker";
 import RobotFrameworkLinker from "./robotFrameworkLinker/RobotFrameworkLinker";
 import TasktLinker from "./tasktLinker/TasktLinker";
 
@@ -20,6 +21,10 @@ class BotLinkerContext {
         break;
       case "taskt":
         this.setLinker(new TasktLinker());
+        break;
+      case "pad":
+      case "powerautomatedesktop":
+        this.setLinker(new PowerAutomateDesktopLinker());
         break;
       default:
         throw new Error("Sorry, " + linkerName + " is not yet supported.");

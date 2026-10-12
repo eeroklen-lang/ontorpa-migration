@@ -61,11 +61,11 @@ describe("portfolio tables", () => {
   it("renders Markdown with one row per bot", () => {
     const lines = portfolioMarkdown(rows).split("\n");
     expect(lines).toHaveLength(3);
-    expect(lines[2]).toBe("| Portal, bot | bots/portal | no | 7 | 5 | 1 | 1 | 71% | 0 | 0 | Browser |");
+    expect(lines[2]).toBe("| Portal, bot | bots/portal | no | 7 | 5 | 1 | 1 | 71% | – | 0 | 0 | Browser |");
   });
 
   it("quotes CSV values that contain commas", () => {
-    expect(portfolioCsv(rows).split("\n")[1]).toBe('"Portal, bot",bots/portal,no,7,5,1,1,71%,0,0,Browser');
+    expect(portfolioCsv(rows).split("\n")[1]).toBe('"Portal, bot",bots/portal,no,7,5,1,1,71%,–,0,0,Browser');
   });
 });
 

@@ -1,6 +1,8 @@
 import fs from "fs";
 import path from "path";
-import { buildMigrationReport } from "../analysis/migrationReport";
+import { buildMigrationReport, MigrationTarget } from "../analysis/migrationReport";
+import { generatePadFlow } from "../botLinkers/powerAutomateDesktopLinker/PowerAutomateDesktopLinker";
+import { padOperationIds } from "../botLinkers/powerAutomateDesktopLinker/padMapping";
 import { importProject } from "../importers/uipath/UiPathImporter";
 import {
   portfolioCsv,
@@ -10,24 +12,34 @@ import {
   renderReport,
 } from "./formatting";
 
-const USAGE = `Usage: npm run import:uipath -- [--summary] [--out <dir>] <folder>...
+const USAGE = `Usage: npm run import:uipath -- [--summary] [--pad] [--out <dir>] <folder>...
 
 Imports every UiPath project found in the folders (a folder with project.json or Main.xaml),
 prints its process tree and migration report, and ends with a portfolio table.
 
   --summary     print only the portfolio table
-  --out <dir>   also write <bot>.json (import result + report), portfolio.md and portfolio.csv`;
+  --pad         also print the Power Automate Desktop skeleton of each bot
+  --out <dir>   also write <bot>.json (import result + report), <bot>.pad.txt,
+                portfolio.md and portfolio.csv`;
+
+const PAD_TARGET: MigrationTarget = {
+  name: "Power Automate Desktop",
+  operations: padOperationIds(),
+};
 
 // Folders that never contain workflows: Studio metadata, git, dependencies
 const SKIPPED_DIRECTORIES = /^(\.|node_modules$)/;
 
 function main(args: string[]) {
   let summaryOnly = false;
+  let printPad = false;
   let outDir: string | undefined;
   const folders: string[] = [];
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--summary") {
       summaryOnly = true;
+    } else if (args[i] === "--pad") {
+      printPad = true;
     } else if (args[i] === "--out") {
       outDir = args[++i];
     } else if (args[i] === "--help" || args[i] === "-h") {
@@ -58,7 +70,8 @@ function main(args: string[]) {
     for (const root of roots) {
       const displayPath = path.relative(process.cwd(), root) || ".";
       const imported = importProject(readProjectFiles(root), { name: fallbackName(root, folder) });
-      const report = buildMigrationReport(imported);
+      const report = buildMigrationReport(imported, PAD_TARGET);
+      const padFlow = generatePadFlow(imported.name, imported.processTree);
       rows.push({ path: displayPath, report });
 
       if (!summaryOnly) {
@@ -68,11 +81,16 @@ function main(args: string[]) {
         renderProcessTree(imported.processTree.tree, imported.processTree.nodeInfo).forEach(
           (line) => console.log(line)
         );
+        if (printPad) {
+          console.log(`\n--- Power Automate Desktop skeleton\n`);
+          console.log(padFlow);
+        }
       }
       if (outDir) {
         fs.mkdirSync(outDir, { recursive: true });
-        const file = path.join(outDir, `${slug(displayPath)}.json`);
-        fs.writeFileSync(file, JSON.stringify({ import: imported, report }, null, 2));
+        const file = path.join(outDir, slug(displayPath));
+        fs.writeFileSync(`${file}.json`, JSON.stringify({ import: imported, report }, null, 2));
+        fs.writeFileSync(`${file}.pad.txt`, padFlow);
       }
     }
   }

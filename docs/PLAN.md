@@ -16,7 +16,7 @@ Tick boxes as work lands. Paths are relative to the repo root (`backend/…`, `f
 | M0: Setup | In progress |
 | M1: UiPath import (#1) | Done |
 | M2: Mapping + readiness report (#2) | Done (target coverage follows with M3) |
-| M3: PAD skeleton exporter | Not started |
+| M3: PAD skeleton exporter | Done (Robin names not yet validated in PAD) |
 | M4: API + UI integration | Not started |
 | Verification | Not started |
 
@@ -121,12 +121,17 @@ Findings from the templates that the importer must handle:
 
 ## M3: PAD skeleton exporter
 
-- [ ] `backend/src/botLinkers/powerAutomateDesktopLinker/padMapping.ts` (including the round-1 extensions: loops, `SetVariable`, Excel range and sheet operations, `OutlookSaveAttachments`, `BrowserNavigate`, `DeleteFile`): ontology id → PAD Robin action template, e.g. `ExcelReadCellValue → Excel.ReadFromExcel.ReadCell Instance: %ExcelInstance% StartColumn: TODO …`. Container setup/cleanup steps map to `Excel.LaunchExcel…` / `WebAutomation.LaunchEdge…`
-- [ ] `PowerAutomateDesktopLinker.ts`: implements `BotLinkerStrategyInterface`
-  - Walk the tree like `RobotFrameworkLinker.ts`
-  - Emit `IF <condition text> THEN/ELSE/END`, `LOOP FOREACH…/END`, and `# TODO (UiPath <activityType>): …` for unmapped or manual nodes
-  - **Never throw** on unmapped nodes, unlike the existing linkers (`RobotFrameworkLinker.ts:193-222`)
-- [ ] Register it as `"pad"` in `backend/src/botLinkers/BotLinkerContext.ts:16-25`
+- [x] `backend/src/botLinkers/powerAutomateDesktopLinker/padMapping.ts`: ontology id → PAD Robin action template, e.g. `ExcelReadCellValue → Excel.ReadFromExcel.ReadCell Instance: ExcelInstance StartColumn: $'''A''' …`. Containers map to launch/close (`WebAutomation.LaunchEdge…` / `CloseWebBrowser`, `Excel.LaunchExcel.LaunchAndOpenUnderExistingProcess` / `CloseAndSave`); an Outlook scope to `Outlook.Launch` / `Outlook.Close`
+  - Only actions with a confident Robin name are mapped. No PAD action yet (counted as "ontology-only"): `ExcelExportPDF`, `ExcelFilterRange`, `ExcelFormatAsTable`, `OutlookDeleteEmail`, `OutlookSaveAttachments`, `StringHash`, Word, G Suite, triggers; `ParallelSplit` runs its branches one after another
+  - Literal URLs, paths and values are filled in; VB/C# expressions become `$'''TODO'''` with the original in a TODO comment (the importer now records `expressionLanguage` / `targetLanguage`). Simple assignments (`x = 3`, `x = "a"`, `x = True`) become `SET`
+  - UI elements are `appmask['TODO']['TODO']`: selectors have to be re-captured in PAD
+- [x] `PowerAutomateDesktopLinker.ts`: implements `BotLinkerStrategyInterface`; `generatePadFlow(name, processTree)` for direct use
+  - Walks the tree; emits `IF Condition<n> = True THEN/ELSE/END`, `SWITCH CaseValue<n>/CASE/END`, `LOOP FOREACH CurrentItem IN Collection<n>/END`, `LOOP WHILE (Condition<n>) = (True)/END`. Placeholder variables are declared at the top, so the flow has no undefined variables; each has a TODO with the UiPath expression
+  - `# TODO "<label>" (UiPath <activityType>): …` for unmapped or manual nodes, and for scopes without a PAD equivalent (desktop apps, SAP)
+  - **Never throws** on unmapped or unknown nodes, unlike the existing linkers (`RobotFrameworkLinker.ts:193-222`)
+- [x] Register it as `"pad"` (and `"powerautomatedesktop"`) in `backend/src/botLinkers/BotLinkerContext.ts`, so `GET /api/botModels/:id?type=pad` returns the skeleton
+- [x] CLI: the report includes **PAD coverage** (`padOperationIds()` as the `MigrationTarget`), the portfolio table has a PAD coverage column, `--pad` prints the skeleton, `--out` also writes `<bot>.pad.txt`
+  - Templates: Excel-to-website 100 % ontology / 100 % PAD, Outlook attachments 100 % / 50 %, Split Excel sheet 100 % / 67 %, TransactionalProcess 75 % / 75 %
 
 ## M4: API + UI integration
 
@@ -155,8 +160,8 @@ Front end:
   - [x] `xamlReader` (property-element traversal)
   - [x] `UiPathImporter` (each construct produces the expected tree; REFramework detected; Invoke inlined; cycle guard)
   - [ ] `migrationReport` (counts and coverage on the fixtures)
-  - [ ] PAD linker (snapshot output; no throw on unmapped)
-  - [ ] every ontology id in `uipathActivityMapping` and `padMapping` exists in `rpa-operations.json` (`uipathActivityMapping` done; `padMapping` with M3)
+  - [x] PAD linker (exact output per construct; no throw on unmapped or unknown nodes; balanced IF/LOOP/SWITCH blocks on every template)
+  - [x] every ontology id in `uipathActivityMapping` and `padMapping` exists in `rpa-operations.json`
 - [ ] `npm run import:uipath samples/*`: each real sample imports without errors, and the portfolio table looks plausible against a manual read of one bot
 - [ ] End to end: start Mongo (`docker run -d -p 27017:27017 mongo`), run back end and front end with `npm run dev`, import a sample at `/import`, open its report, download the PAD export
 - [ ] On a Windows machine, paste the exported skeleton into the Power Automate Desktop designer and confirm it parses. Mapped actions appear, only TODO parameters are flagged. Fix any action names in `padMapping.ts` that PAD rejects

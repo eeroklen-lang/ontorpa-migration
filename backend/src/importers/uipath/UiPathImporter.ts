@@ -7,7 +7,7 @@ import {
   MappingStatus,
 } from "../../interfaces/BotModelInterface";
 import { AppContext, isUiActivity, loopOperationOf, mapActivity, scopeOf } from "./uipathActivityMapping";
-import { getArgument, readXaml, XAML_NAMESPACE, XamlNode } from "./xamlReader";
+import { getArgument, readXaml, XAML_NAMESPACE, XamlExpression, XamlNode } from "./xamlReader";
 
 type TreeItem = string | IProcessTreeStructure;
 
@@ -326,7 +326,7 @@ class UiPathImporter {
 
       case "If":
         return [
-          this.gateway("BinaryDecision", node, scope, getArgument(node, "Condition")?.text, () => [
+          this.gateway("BinaryDecision", node, scope, getArgument(node, "Condition"), () => [
             this.convertActivities(node.slots.Then || [], scope),
             this.convertActivities(node.slots.Else || [], scope),
           ]),
@@ -338,7 +338,7 @@ class UiPathImporter {
             "CaseDecision",
             node,
             scope,
-            getArgument(node, "Expression")?.text,
+            getArgument(node, "Expression"),
             () =>
               [...node.children.filter(isActivity), ...(node.slots.Default || [])].map((branch) =>
                 this.convertActivity(branch, scope)
@@ -384,6 +384,7 @@ class UiPathImporter {
       const loopId = this.addNode("Loop", label(node), loopOperation, "mapped", {
         ...this.sourceOf(node, scope),
         expression: expression?.text,
+        expressionLanguage: expression?.language,
       });
       return [{ [loopId]: [asBranch(this.convertActivities(bodyOf(node), scope))] }];
     }
@@ -397,7 +398,12 @@ class UiPathImporter {
         label(node),
         appScope.container || "",
         appScope.container ? "mapped" : "structural",
-        { ...this.sourceOf(node, scope), context: appScope.app, target: appScope.target }
+        {
+          ...this.sourceOf(node, scope),
+          context: appScope.app,
+          target: appScope.target?.text,
+          targetLanguage: appScope.target?.language,
+        }
       );
       return [{ [nodeId]: [asBranch(this.convertActivities(bodyOf(node), inner))] }];
     }
@@ -414,8 +420,8 @@ class UiPathImporter {
 
     const source: IProcessTreeNodeSource = {
       ...this.sourceOf(node, scope),
-      expression: expressionOf(node),
-      target: targetOf(node),
+      ...withExpression(expressionOf(node)),
+      ...withTarget(targetOf(node)),
     };
     if (result.status === "manual") {
       source.reason = result.reason;
@@ -510,12 +516,12 @@ class UiPathImporter {
     concept: string,
     node: XamlNode,
     scope: Scope,
-    expression: string | undefined,
+    expression: XamlExpression | undefined,
     convertBranches: () => TreeItem[][]
   ): IProcessTreeStructure {
-    const gatewayId = this.addNode("Gateway", label(node, expression), concept, "mapped", {
+    const gatewayId = this.addNode("Gateway", label(node, expression?.text), concept, "mapped", {
       ...this.sourceOf(node, scope),
-      expression,
+      ...withExpression(expression),
     });
     return { [gatewayId]: convertBranches().map(asBranch) };
   }
@@ -696,8 +702,7 @@ class FlowchartConverter {
       const branchStarts = this.successors(current);
       const join = this.findJoin(branchStarts, path);
       const branchPath = new Set(path);
-      const expression =
-        getArgument(current, "Condition")?.text ?? getArgument(current, "Expression")?.text;
+      const expression = getArgument(current, "Condition") ?? getArgument(current, "Expression");
       items.push(
         this.importer.gateway(
           current.name === "FlowDecision" ? "BinaryDecision" : "CaseDecision",
@@ -749,33 +754,43 @@ function bodyOf(node: XamlNode): XamlNode[] {
   return [...fromSlots, ...node.children].filter(isActivity);
 }
 
-function expressionOf(node: XamlNode): string | undefined {
+function expressionOf(node: XamlNode): XamlExpression | undefined {
   if (node.name === "Assign") {
-    const to = getArgument(node, "To")?.text;
-    const value = getArgument(node, "Value")?.text;
-    return to !== undefined ? `${to} = ${value ?? ""}` : undefined;
+    const to = getArgument(node, "To");
+    const value = getArgument(node, "Value");
+    return to !== undefined
+      ? { text: `${to.text} = ${value?.text ?? ""}`, language: value?.language ?? to.language }
+      : undefined;
   }
   if (node.name === "MultipleAssign") {
     const operations = (node.slots.AssignOperations || []).flatMap((n) =>
       n.name === "AssignOperation" ? [n] : n.children.filter((c) => c.name === "AssignOperation")
     );
-    return operations
-      .map((op) => `${getArgument(op, "To")?.text ?? "?"} = ${getArgument(op, "Value")?.text ?? ""}`)
-      .join("; ");
+    const assignments = operations.map((op) => ({ to: getArgument(op, "To"), value: getArgument(op, "Value") }));
+    return {
+      text: assignments.map(({ to, value }) => `${to?.text ?? "?"} = ${value?.text ?? ""}`).join("; "),
+      language: assignments.find(({ value }) => value && value.language !== "Literal")?.value?.language ?? "Literal",
+    };
   }
-  return (
-    getArgument(node, "Text") ?? getArgument(node, "Value") ?? getArgument(node, "Condition")
-  )?.text;
+  return getArgument(node, "Text") ?? getArgument(node, "Value") ?? getArgument(node, "Condition");
 }
 
-function targetOf(node: XamlNode): string | undefined {
+function targetOf(node: XamlNode): XamlExpression | undefined {
   for (const property of ["Url", "WorkbookPath", "FileName", "FilePath", "Path", "SheetName"]) {
     const argument = getArgument(node, property);
     if (argument) {
-      return argument.text;
+      return argument;
     }
   }
   return undefined;
+}
+
+function withExpression(expression: XamlExpression | undefined): Partial<IProcessTreeNodeSource> {
+  return expression ? { expression: expression.text, expressionLanguage: expression.language } : {};
+}
+
+function withTarget(target: XamlExpression | undefined): Partial<IProcessTreeNodeSource> {
+  return target ? { target: target.text, targetLanguage: target.language } : {};
 }
 
 function findAll(node: XamlNode, predicate: (n: XamlNode) => boolean, found: XamlNode[] = []): XamlNode[] {

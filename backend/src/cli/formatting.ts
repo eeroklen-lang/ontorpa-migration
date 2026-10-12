@@ -138,6 +138,7 @@ const PORTFOLIO_COLUMNS: [string, (row: PortfolioRow) => string | number][] = [
   ["Unmapped", (r) => r.report.totals.unmapped],
   ["Manual", (r) => r.report.totals.manual],
   ["Ontology coverage", (r) => percent(r.report.coverage.ontology)],
+  ["PAD coverage", (r) => percent(r.report.coverage.target)],
   ["Selectors", (r) => r.report.manualWork.selectors],
   ["Try/catch", (r) => r.report.manualWork.catches.length],
   ["Applications", (r) => r.report.applications.map((a) => a.name).join("; ")],

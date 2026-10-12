@@ -14,6 +14,9 @@ interface IBotModel {
  */
 export type MappingStatus = "mapped" | "unmapped" | "structural" | "manual";
 
+/** Language of an imported expression; "Literal" for plain values such as a fixed URL. */
+export type ExpressionLanguage = "VisualBasic" | "CSharp" | "Literal";
+
 /** Where an imported node came from in the source RPA tool. */
 export interface IProcessTreeNodeSource {
   vendor: "UiPath";
@@ -25,8 +28,10 @@ export interface IProcessTreeNodeSource {
   context?: string;
   /** Condition or value expression, kept as source text. */
   expression?: string;
+  expressionLanguage?: ExpressionLanguage;
   /** URL, file path or selector the activity targets. */
   target?: string;
+  targetLanguage?: ExpressionLanguage;
   /** Why the node needs manual work, for mappingStatus "manual". */
   reason?: string;
 }
