@@ -22,6 +22,7 @@ const imported = importProject(
           <If.Else><ui:InvokeCode DisplayName="Login script" /></If.Else>
         </If>
         <While DisplayName="Retry" Condition="[tries &lt; 3]"><Assign DisplayName="Count" /></While>
+        <ui:KillProcess DisplayName="Stop app" />
       </Sequence>
     </Activity>`,
   },
@@ -35,11 +36,12 @@ describe("renderProcessTree", () => {
       '  ✓ BrowserOpenURL  "Open portal"',
       '  ✓ BinaryDecision  "Logged in?"  [if loggedIn]',
       "    branch 1",
-      '      ✗ Assign  "Remember"',
+      '      ✓ SetVariable  "Remember"',
       "    branch 2",
       '      ! InvokeCode  "Login script"  [Invoke Code: custom VB/C# code]',
-      '  ✗ While (loop)  "Retry"',
-      '    ✗ Assign  "Count"',
+      '  ✓ ConditionalLoop (loop)  "Retry"',
+      '    ✓ SetVariable  "Count"',
+      '  ✗ KillProcess  "Stop app"',
     ]);
   });
 });
@@ -48,8 +50,8 @@ describe("renderReport", () => {
   it("summarises totals, coverage and unmapped activities", () => {
     const lines = renderReport(buildMigrationReport(imported));
     expect(lines[0]).toBe("Bot: Portal, bot  (Main.xaml; 1/1 workflow files imported)");
-    expect(lines[1]).toBe("Steps: 6  mapped 2 · unmapped 3 · manual 1   Ontology coverage: 33%");
-    expect(lines[2]).toBe("Unmapped: Assign ×2, While ×1");
+    expect(lines[1]).toBe("Steps: 7  mapped 5 · unmapped 1 · manual 1   Ontology coverage: 71%");
+    expect(lines[2]).toBe("Unmapped: KillProcess ×1");
   });
 });
 
@@ -59,11 +61,11 @@ describe("portfolio tables", () => {
   it("renders Markdown with one row per bot", () => {
     const lines = portfolioMarkdown(rows).split("\n");
     expect(lines).toHaveLength(3);
-    expect(lines[2]).toBe("| Portal, bot | bots/portal | no | 6 | 2 | 3 | 1 | 33% | 0 | 0 | Browser |");
+    expect(lines[2]).toBe("| Portal, bot | bots/portal | no | 7 | 5 | 1 | 1 | 71% | 0 | 0 | Browser |");
   });
 
   it("quotes CSV values that contain commas", () => {
-    expect(portfolioCsv(rows).split("\n")[1]).toBe('"Portal, bot",bots/portal,no,6,2,3,1,33%,0,0,Browser');
+    expect(portfolioCsv(rows).split("\n")[1]).toBe('"Portal, bot",bots/portal,no,7,5,1,1,71%,0,0,Browser');
   });
 });
 

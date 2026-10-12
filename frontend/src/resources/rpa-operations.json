@@ -3367,5 +3367,478 @@
         "@id": "http://www.w3.org/2001/XMLSchema#string"
       }
     ]
+  },
+  {
+    "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#control-flow-loop",
+    "@type": [
+      "http://www.w3.org/2002/07/owl#Class"
+    ],
+    "http://www.w3.org/2000/01/rdf-schema#comment": [
+      {
+        "@value": "Repeats a sequence of operations, either once for each item of a collection or as long as a condition holds."
+      }
+    ],
+    "http://www.w3.org/2000/01/rdf-schema#label": [
+      {
+        "@value": "Controlflow Loop"
+      }
+    ],
+    "http://www.w3.org/2000/01/rdf-schema#subClassOf": [
+      {
+        "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#control-flow-operation"
+      }
+    ]
+  },
+  {
+    "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#ForEachLoop",
+    "@type": [
+      "http://www.w3.org/2002/07/owl#NamedIndividual",
+      "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#control-flow-loop"
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#bpmoConcept": [
+      {
+        "@value": "CompoundActivity"
+      }
+    ]
+  },
+  {
+    "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#ConditionalLoop",
+    "@type": [
+      "http://www.w3.org/2002/07/owl#NamedIndividual",
+      "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#control-flow-loop"
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#bpmoConcept": [
+      {
+        "@value": "CompoundActivity"
+      }
+    ]
+  },
+  {
+    "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#SetVariable",
+    "@type": [
+      "http://www.w3.org/2002/07/owl#NamedIndividual",
+      "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#transient-data-operation"
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#bpmoConcept": [
+      {
+        "@value": "AtomicActivity"
+      }
+    ]
+  },
+  {
+    "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#read-range",
+    "@type": [
+      "http://www.w3.org/2002/07/owl#Class"
+    ],
+    "http://www.w3.org/2000/01/rdf-schema#comment": [
+      {
+        "@value": "Reads the values of a range of cells in a spreadsheet as a table."
+      }
+    ],
+    "http://www.w3.org/2000/01/rdf-schema#label": [
+      {
+        "@value": "Read Range"
+      }
+    ],
+    "http://www.w3.org/2000/01/rdf-schema#subClassOf": [
+      {
+        "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#data-extraction-operation"
+      }
+    ]
+  },
+  {
+    "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#write-range",
+    "@type": [
+      "http://www.w3.org/2002/07/owl#Class"
+    ],
+    "http://www.w3.org/2000/01/rdf-schema#comment": [
+      {
+        "@value": "Writes a table into a range of cells in a spreadsheet."
+      }
+    ],
+    "http://www.w3.org/2000/01/rdf-schema#label": [
+      {
+        "@value": "Write Range"
+      }
+    ],
+    "http://www.w3.org/2000/01/rdf-schema#subClassOf": [
+      {
+        "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#data-input-operation"
+      }
+    ]
+  },
+  {
+    "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#TableTransientData",
+    "@type": [
+      "http://www.w3.org/2002/07/owl#NamedIndividual",
+      "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#complex-transient-data"
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#bpmoConcept": [
+      {
+        "@value": "DataObject"
+      }
+    ]
+  },
+  {
+    "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#ExcelReadRange",
+    "@type": [
+      "http://www.w3.org/2002/07/owl#NamedIndividual",
+      "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#read-range"
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#automates": [
+      {
+        "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#MicrosoftExcel"
+      }
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#bpmoConcept": [
+      {
+        "@value": "AtomicActivity"
+      }
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#implicitlyReads": [
+      {
+        "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#ExcelWorkbook"
+      }
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#yields": [
+      {
+        "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#TableTransientData"
+      }
+    ]
+  },
+  {
+    "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#ExcelWriteRange",
+    "@type": [
+      "http://www.w3.org/2002/07/owl#NamedIndividual",
+      "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#write-range"
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#automates": [
+      {
+        "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#MicrosoftExcel"
+      }
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#bpmoConcept": [
+      {
+        "@value": "AtomicActivity"
+      }
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#implicitlyWrites": [
+      {
+        "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#ExcelWorkbook"
+      }
+    ]
+  },
+  {
+    "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#copy-range",
+    "@type": [
+      "http://www.w3.org/2002/07/owl#Class"
+    ],
+    "http://www.w3.org/2000/01/rdf-schema#comment": [
+      {
+        "@value": "Copies the cells of a range to another place in a spreadsheet."
+      }
+    ],
+    "http://www.w3.org/2000/01/rdf-schema#label": [
+      {
+        "@value": "Copy Range"
+      }
+    ],
+    "http://www.w3.org/2000/01/rdf-schema#subClassOf": [
+      {
+        "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#data-transformation-operation"
+      }
+    ]
+  },
+  {
+    "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#filter-range",
+    "@type": [
+      "http://www.w3.org/2002/07/owl#Class"
+    ],
+    "http://www.w3.org/2000/01/rdf-schema#comment": [
+      {
+        "@value": "Filters the rows of a range or table in a spreadsheet by a condition."
+      }
+    ],
+    "http://www.w3.org/2000/01/rdf-schema#label": [
+      {
+        "@value": "Filter Range"
+      }
+    ],
+    "http://www.w3.org/2000/01/rdf-schema#subClassOf": [
+      {
+        "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#data-transformation-operation"
+      }
+    ]
+  },
+  {
+    "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#format-as-table",
+    "@type": [
+      "http://www.w3.org/2002/07/owl#Class"
+    ],
+    "http://www.w3.org/2000/01/rdf-schema#comment": [
+      {
+        "@value": "Turns a range of cells in a spreadsheet into a formatted table."
+      }
+    ],
+    "http://www.w3.org/2000/01/rdf-schema#label": [
+      {
+        "@value": "Format As Table"
+      }
+    ],
+    "http://www.w3.org/2000/01/rdf-schema#subClassOf": [
+      {
+        "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#data-transformation-operation"
+      }
+    ]
+  },
+  {
+    "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#insert-sheet",
+    "@type": [
+      "http://www.w3.org/2002/07/owl#Class"
+    ],
+    "http://www.w3.org/2000/01/rdf-schema#comment": [
+      {
+        "@value": "Adds a new sheet to a spreadsheet."
+      }
+    ],
+    "http://www.w3.org/2000/01/rdf-schema#label": [
+      {
+        "@value": "Insert Sheet"
+      }
+    ],
+    "http://www.w3.org/2000/01/rdf-schema#subClassOf": [
+      {
+        "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#data-transformation-operation"
+      }
+    ]
+  },
+  {
+    "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#rename-sheet",
+    "@type": [
+      "http://www.w3.org/2002/07/owl#Class"
+    ],
+    "http://www.w3.org/2000/01/rdf-schema#comment": [
+      {
+        "@value": "Changes the name of a sheet in a spreadsheet."
+      }
+    ],
+    "http://www.w3.org/2000/01/rdf-schema#label": [
+      {
+        "@value": "Rename Sheet"
+      }
+    ],
+    "http://www.w3.org/2000/01/rdf-schema#subClassOf": [
+      {
+        "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#data-transformation-operation"
+      }
+    ]
+  },
+  {
+    "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#ExcelCopyRange",
+    "@type": [
+      "http://www.w3.org/2002/07/owl#NamedIndividual",
+      "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#copy-range"
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#automates": [
+      {
+        "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#MicrosoftExcel"
+      }
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#bpmoConcept": [
+      {
+        "@value": "AtomicActivity"
+      }
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#implicitlyWrites": [
+      {
+        "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#ExcelWorkbook"
+      }
+    ]
+  },
+  {
+    "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#ExcelFilterRange",
+    "@type": [
+      "http://www.w3.org/2002/07/owl#NamedIndividual",
+      "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#filter-range"
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#automates": [
+      {
+        "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#MicrosoftExcel"
+      }
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#bpmoConcept": [
+      {
+        "@value": "AtomicActivity"
+      }
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#implicitlyWrites": [
+      {
+        "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#ExcelWorkbook"
+      }
+    ]
+  },
+  {
+    "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#ExcelFormatAsTable",
+    "@type": [
+      "http://www.w3.org/2002/07/owl#NamedIndividual",
+      "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#format-as-table"
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#automates": [
+      {
+        "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#MicrosoftExcel"
+      }
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#bpmoConcept": [
+      {
+        "@value": "AtomicActivity"
+      }
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#implicitlyWrites": [
+      {
+        "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#ExcelWorkbook"
+      }
+    ]
+  },
+  {
+    "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#ExcelInsertSheet",
+    "@type": [
+      "http://www.w3.org/2002/07/owl#NamedIndividual",
+      "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#insert-sheet"
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#automates": [
+      {
+        "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#MicrosoftExcel"
+      }
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#bpmoConcept": [
+      {
+        "@value": "AtomicActivity"
+      }
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#implicitlyWrites": [
+      {
+        "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#ExcelWorkbook"
+      }
+    ]
+  },
+  {
+    "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#ExcelRenameSheet",
+    "@type": [
+      "http://www.w3.org/2002/07/owl#NamedIndividual",
+      "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#rename-sheet"
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#automates": [
+      {
+        "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#MicrosoftExcel"
+      }
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#bpmoConcept": [
+      {
+        "@value": "AtomicActivity"
+      }
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#implicitlyWrites": [
+      {
+        "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#ExcelWorkbook"
+      }
+    ]
+  },
+  {
+    "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#save-attachments",
+    "@type": [
+      "http://www.w3.org/2002/07/owl#Class"
+    ],
+    "http://www.w3.org/2000/01/rdf-schema#comment": [
+      {
+        "@value": "Saves the attachments of an email as files."
+      }
+    ],
+    "http://www.w3.org/2000/01/rdf-schema#label": [
+      {
+        "@value": "Save Attachments"
+      }
+    ],
+    "http://www.w3.org/2000/01/rdf-schema#subClassOf": [
+      {
+        "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#data-extraction-operation"
+      }
+    ]
+  },
+  {
+    "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#navigate",
+    "@type": [
+      "http://www.w3.org/2002/07/owl#Class"
+    ],
+    "http://www.w3.org/2000/01/rdf-schema#comment": [
+      {
+        "@value": "Moves within an application without accessing data, e.g. going back, forward or refreshing a web page."
+      }
+    ],
+    "http://www.w3.org/2000/01/rdf-schema#label": [
+      {
+        "@value": "Navigate"
+      }
+    ],
+    "http://www.w3.org/2000/01/rdf-schema#subClassOf": [
+      {
+        "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#software-control-operation"
+      }
+    ]
+  },
+  {
+    "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#OutlookSaveAttachments",
+    "@type": [
+      "http://www.w3.org/2002/07/owl#NamedIndividual",
+      "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#save-attachments"
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#automates": [
+      {
+        "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#MicrosoftOutlook"
+      }
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#bpmoConcept": [
+      {
+        "@value": "AtomicActivity"
+      }
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#directlyReads": [
+      {
+        "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#Email"
+      }
+    ]
+  },
+  {
+    "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#BrowserNavigate",
+    "@type": [
+      "http://www.w3.org/2002/07/owl#NamedIndividual",
+      "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#navigate"
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#automates": [
+      {
+        "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#Browser"
+      }
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#bpmoConcept": [
+      {
+        "@value": "AtomicActivity"
+      }
+    ]
+  },
+  {
+    "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#DeleteFile",
+    "@type": [
+      "http://www.w3.org/2002/07/owl#NamedIndividual",
+      "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#delete-file"
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#automates": [
+      {
+        "@id": "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#OperatingSystem"
+      }
+    ],
+    "http://www.semanticweb.org/maximilian.voelker/ontologies/rpa-operations#bpmoConcept": [
+      {
+        "@value": "AtomicActivity"
+      }
+    ]
   }
 ]

@@ -6,7 +6,7 @@ import {
   IProcessTreeStructure,
   MappingStatus,
 } from "../../interfaces/BotModelInterface";
-import { AppContext, isUiActivity, mapActivity, scopeOf } from "./uipathActivityMapping";
+import { AppContext, isUiActivity, loopOperationOf, mapActivity, scopeOf } from "./uipathActivityMapping";
 import { getArgument, readXaml, XAML_NAMESPACE, XamlNode } from "./xamlReader";
 
 type TreeItem = string | IProcessTreeStructure;
@@ -71,23 +71,6 @@ const REFRAMEWORK_STATES = [
   "Process Transaction",
   "End Process",
 ];
-
-const LOOP_ACTIVITIES = new Set([
-  "While",
-  "DoWhile",
-  "InterruptibleWhile",
-  "InterruptibleDoWhile",
-  "ForEach",
-  "ForEachRow",
-  "ParallelForEach",
-  "ExcelForEachRow",
-  "ForEachRowX",
-  "ForEachSheetX",
-  "ForEachFileX",
-  "ForEachFolderX",
-  "OutlookForEachMail",
-  "ForEachEmailX",
-]);
 
 // Elements that hold data, not activities, when they appear as element children.
 const DATA_ELEMENTS = new Set([
@@ -391,13 +374,14 @@ class UiPathImporter {
         return this.convertStateMachine(node, scope);
     }
 
-    if (LOOP_ACTIVITIES.has(node.name)) {
+    const loopOperation = loopOperationOf(node.name);
+    if (loopOperation) {
       const expression =
         getArgument(node, "Condition") ??
         getArgument(node, "Values") ??
         getArgument(node, "DataTable") ??
         getArgument(node, "Range");
-      const loopId = this.addNode("Loop", label(node), "", "unmapped", {
+      const loopId = this.addNode("Loop", label(node), loopOperation, "mapped", {
         ...this.sourceOf(node, scope),
         expression: expression?.text,
       });

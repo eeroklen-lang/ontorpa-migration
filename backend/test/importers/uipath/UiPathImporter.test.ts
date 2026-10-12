@@ -57,7 +57,7 @@ describe("importProject: control flow", () => {
         <Sequence DisplayName="Group"><uix:NGoToUrl DisplayName="Open site" Url="https://example.com" /></Sequence>
         <Assign DisplayName="Set x"><Assign.To><OutArgument x:TypeArguments="x:Int32">[x]</OutArgument></Assign.To><Assign.Value><InArgument x:TypeArguments="x:Int32">[1]</InArgument></Assign.Value></Assign>
       </Sequence>`);
-    expect(tree).toBe("Process(Flow(BrowserOpenURL, ?Assign))");
+    expect(tree).toBe("Process(Flow(BrowserOpenURL, SetVariable))");
   });
 
   it("turns If into a BinaryDecision with then and else branches", () => {
@@ -65,7 +65,7 @@ describe("importProject: control flow", () => {
       <If DisplayName="Has rows?" Condition="[rows.Count &gt; 0]">
         <If.Then><Sequence><Assign /><Assign /></Sequence></If.Then>
       </If>`);
-    expect(tree).toBe("Process(BinaryDecision(Flow(?Assign, ?Assign), Flow()))");
+    expect(tree).toBe("Process(BinaryDecision(Flow(SetVariable, SetVariable), Flow()))");
     expect(nodes[0]).toMatchObject({
       label: "Has rows?",
       concept: "BinaryDecision",
@@ -85,7 +85,7 @@ describe("importProject: control flow", () => {
         <Parallel><Assign /><Assign /></Parallel>
       </Sequence>`);
     expect(tree).toBe(
-      "Process(Flow(CaseDecision(?Assign, Flow(?Assign, ?Assign), ?Assign), ParallelSplit(?Assign, ?Assign)))"
+      "Process(Flow(CaseDecision(SetVariable, Flow(SetVariable, SetVariable), SetVariable), ParallelSplit(SetVariable, SetVariable)))"
     );
   });
 
@@ -102,7 +102,7 @@ describe("importProject: control flow", () => {
           </ui:ForEach.Body>
         </ui:ForEach>
       </Sequence>`);
-    expect(tree).toBe("Process(Flow(?While(?Assign), ?ForEach(Flow(?Assign, ?Assign))))");
+    expect(tree).toBe("Process(Flow(ConditionalLoop(SetVariable), ForEachLoop(Flow(SetVariable, SetVariable))))");
     expect(Object.keys(result.processTree.nodeInfo).filter((id) => id.startsWith("Loop_"))).toEqual([
       "Loop_1",
       "Loop_2",
@@ -119,7 +119,7 @@ describe("importProject: control flow", () => {
         </TryCatch.Catches>
         <TryCatch.Finally><Assign DisplayName="finally" /></TryCatch.Finally>
       </TryCatch>`);
-    expect(tree).toBe("Process(Flow(?Assign, ?Assign))");
+    expect(tree).toBe("Process(Flow(SetVariable, SetVariable))");
     expect(Object.values(result.processTree.nodeInfo).map((n) => n.label)).toEqual(["try", "finally"]);
     expect(result.source.catches).toEqual([
       { file: "Main.xaml", tryCatch: "Try login", exceptionTypes: ["ui:BusinessRuleException"] },
@@ -157,7 +157,7 @@ describe("importProject: flowcharts", () => {
           </FlowStep.Next>
         </FlowStep>
       </Flowchart>`);
-    expect(tree).toBe("Process(Flow(?Assign, BinaryDecision(Flow(?Assign, ?Flowchart), ?Assign)))");
+    expect(tree).toBe("Process(Flow(SetVariable, BinaryDecision(Flow(SetVariable, ?Flowchart), SetVariable)))");
     expect(nodes.find((n) => n.mappingStatus === "manual")?.label).toBe(
       "Flowchart loop back to Read input"
     );
@@ -174,7 +174,7 @@ describe("importProject: flowcharts", () => {
         </Flowchart.StartNode>
         <FlowStep x:Name="__ReferenceID9"><Assign DisplayName="after" /></FlowStep>
       </Flowchart>`);
-    expect(tree).toBe("Process(Flow(BinaryDecision(?Assign, Flow()), ?Assign))");
+    expect(tree).toBe("Process(Flow(BinaryDecision(SetVariable, Flow()), SetVariable))");
   });
 });
 
@@ -184,7 +184,7 @@ describe("importProject: invoked workflows", () => {
       `<Sequence><ui:InvokeWorkflowFile WorkflowFileName="Steps\\Login.xaml" /></Sequence>`,
       { "Steps/Login.xaml": xaml(`<Sequence><Assign DisplayName="login" /></Sequence>`) }
     );
-    expect(tree).toBe("Process(?Assign)");
+    expect(tree).toBe("Process(SetVariable)");
     expect(result.processTree.nodeInfo.Activity_1.source?.file).toBe("Steps/Login.xaml");
     expect(result.source.importedFiles).toEqual(["Main.xaml", "Steps/Login.xaml"]);
   });
@@ -339,7 +339,7 @@ describe.skipIf(!fs.existsSync(templatesDir))("importProject on UiPath Studio te
     const result = importProject(readProject("EnterExcelDataIntoWebsite/contentFiles/any/any/pt0/VisualBasic"));
     const tree = render(result.processTree.tree, result.processTree.nodeInfo);
     expect(tree).toBe(
-      "Process(WithBrowser(Flow(BrowserOpenURL, ?NNavigateBrowser, WithMicrosoftExcel(?ExcelForEachRow(Flow(" +
+      "Process(WithBrowser(Flow(BrowserOpenURL, BrowserNavigate, WithMicrosoftExcel(ForEachLoop(Flow(" +
         "BrowserClickButton, BrowserInputText, BrowserInputText, BrowserClickButton, BrowserClickButton, BrowserClickButton))))))"
     );
     expect(result.source.selectorCount).toBe(6);

@@ -76,6 +76,7 @@ const activityRules: Record<string, Rule> = {
   SelectItem: ui({ browser: "BrowserSelectItem" }),
   SelectMultipleItems: ui({ browser: "BrowserSelectItems" }),
   NGoToUrl: mapped("BrowserOpenURL"),
+  NNavigateBrowser: mapped("BrowserNavigate"),
   NavigateTo: mapped("BrowserOpenURL"),
   CloseTab: mapped("BrowserClose"),
   NCloseTab: mapped("BrowserClose"),
@@ -91,6 +92,19 @@ const activityRules: Record<string, Rule> = {
   ExcelSaveWorkbook: mapped("ExcelSaveWorkbook"),
   SaveAsPdfX: mapped("ExcelExportPDF"),
   ExcelCloseWorkbook: mapped("ExcelClose"),
+  ReadRangeX: mapped("ExcelReadRange"),
+  ExcelReadRange: mapped("ExcelReadRange"),
+  ReadRange: mapped("ExcelReadRange"),
+  WriteRangeX: mapped("ExcelWriteRange"),
+  ExcelWriteRange: mapped("ExcelWriteRange"),
+  WriteRange: mapped("ExcelWriteRange"),
+  CopyPasteRangeX: mapped("ExcelCopyRange"),
+  FilterX: mapped("ExcelFilterRange"),
+  ExcelFilterTable: mapped("ExcelFilterRange"),
+  CreateTableX: mapped("ExcelFormatAsTable"),
+  ExcelCreateTable: mapped("ExcelFormatAsTable"),
+  InsertSheetX: mapped("ExcelInsertSheet"),
+  RenameSheetX: mapped("ExcelRenameSheet"),
 
   // Mail: the same modern activity serves Outlook and Gmail, so it depends on the scope
   SendOutlookMail: mapped("OutlookSendEmail"),
@@ -98,9 +112,15 @@ const activityRules: Record<string, Rule> = {
   SendMailX: api({ outlook: "OutlookSendEmail" }),
   GetEmailListX: api({ outlook: "OutlookGetEmails" }),
   DeleteMailX: api({ outlook: "OutlookDeleteEmail" }),
+  SaveMailAttachmentsX: api({ outlook: "OutlookSaveAttachments" }),
 
-  // Text files
+  // Files
   AppendLine: mapped("AppendPlainText"),
+  DeleteFileX: mapped("DeleteFile"),
+
+  // Variables
+  Assign: mapped("SetVariable"),
+  MultipleAssign: mapped("SetVariable"),
 
   // Logging and comments carry no behaviour to migrate
   LogMessage: ignore,
@@ -160,6 +180,29 @@ export function isUiActivity(node: XamlNode): boolean {
   );
 }
 
+/** Loop activities: collection loops map to ForEachLoop, condition loops to ConditionalLoop. */
+const loopOperations: Record<string, string> = {
+  ForEach: "ForEachLoop",
+  ForEachRow: "ForEachLoop",
+  ParallelForEach: "ForEachLoop",
+  ExcelForEachRow: "ForEachLoop",
+  ForEachRowX: "ForEachLoop",
+  ForEachSheetX: "ForEachLoop",
+  ForEachFileX: "ForEachLoop",
+  ForEachFolderX: "ForEachLoop",
+  OutlookForEachMail: "ForEachLoop",
+  ForEachEmailX: "ForEachLoop",
+  While: "ConditionalLoop",
+  DoWhile: "ConditionalLoop",
+  InterruptibleWhile: "ConditionalLoop",
+  InterruptibleDoWhile: "ConditionalLoop",
+};
+
+/** The loop operation for a loop activity, or undefined if the activity is not a loop. */
+export function loopOperationOf(activityType: string): string | undefined {
+  return loopOperations[activityType];
+}
+
 export function mapActivity(
   activityType: string,
   context: MappingContext
@@ -189,6 +232,7 @@ export function mappedOperationIds(): string[] {
     }
   }
   scopeContainers.forEach((container) => ids.add(container));
+  Object.values(loopOperations).forEach((loop) => ids.add(loop));
   return Array.from(ids);
 }
 

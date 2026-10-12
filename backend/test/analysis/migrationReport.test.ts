@@ -44,17 +44,20 @@ describe("buildMigrationReport", () => {
   const report = buildMigrationReport(imported);
 
   it("counts steps by mapping status and computes ontology coverage", () => {
-    // WithBrowser container + 2 browser clicks are mapped; NNavigateBrowser, the desktop click and 2 Assigns are not
-    expect(report.totals).toEqual({ steps: 8, mapped: 3, unmapped: 4, manual: 1, structural: 0 });
-    expect(report.coverage).toEqual({ ontology: 3 / 8 });
+    // Only the click outside any UI scope is unmapped; Invoke Code is manual
+    expect(report.totals).toEqual({ steps: 8, mapped: 6, unmapped: 1, manual: 1, structural: 0 });
+    expect(report.coverage).toEqual({ ontology: 6 / 8 });
     expect(report.target).toBeUndefined();
   });
 
   it("lists unmapped activity types with their context, most frequent first", () => {
-    expect(report.unmappedActivities).toEqual([
-      { activityType: "Assign", count: 2 },
-      { activityType: "NClick", count: 1 },
-      { activityType: "NNavigateBrowser", context: "browser", count: 1 },
+    const withUnmapped = buildMigrationReport(
+      importBot(`<Sequence>${click("A")}<ui:KillProcess />${click("B")}${browserCard("<ui:KillProcess />")}</Sequence>`)
+    );
+    expect(withUnmapped.unmappedActivities).toEqual([
+      { activityType: "NClick", count: 2 },
+      { activityType: "KillProcess", count: 1 },
+      { activityType: "KillProcess", context: "browser", count: 1 },
     ]);
   });
 
@@ -80,11 +83,12 @@ describe("buildMigrationReport", () => {
       operations: new Set(["WithBrowser", "BrowserClickButton"]),
     });
     expect(withTarget.target).toBe("Power Automate Desktop");
-    expect(withTarget.totals.ontologyOnly).toBe(0);
+    // BrowserNavigate and the two SetVariable steps are mapped to the ontology but not to this target
+    expect(withTarget.totals.ontologyOnly).toBe(3);
     expect(withTarget.coverage.target).toBe(3 / 8);
 
     const partial = buildMigrationReport(imported, { name: "PAD", operations: new Set(["WithBrowser"]) });
-    expect(partial.totals.ontologyOnly).toBe(2);
+    expect(partial.totals.ontologyOnly).toBe(5);
     expect(partial.coverage.target).toBe(1 / 8);
   });
 

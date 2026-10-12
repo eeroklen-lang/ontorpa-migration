@@ -15,7 +15,7 @@ Tick boxes as work lands. Paths are relative to the repo root (`backend/…`, `f
 |---|---|
 | M0: Setup | In progress |
 | M1: UiPath import (#1) | Done |
-| M2: Mapping + readiness report (#2) | In progress |
+| M2: Mapping + readiness report (#2) | Done (target coverage follows with M3) |
 | M3: PAD skeleton exporter | Not started |
 | M4: API + UI integration | Not started |
 | Verification | Not started |
@@ -115,16 +115,13 @@ Findings from the templates that the importer must handle:
   - manual work: manual nodes with reasons, catches, notes (retry scopes), REFramework config and framework files, selector count
 - [x] `backend/src/cli/importUiPath.ts` (script `npm run import:uipath -- [--summary] [--out <dir>] <folder>…`): finds every project (folder with `project.json` or `Main.xaml`) below the given folders, prints the report and the process tree, and ends with the **portfolio summary table**; `--out` writes per-bot JSON plus `portfolio.md` / `portfolio.csv`. Usage is in the root README
   - First run over the templates (11 bots): Excel-to-website 82 % ontology coverage, TransactionalProcess 50 %, SplitExcelSheet 8 %, SaveOutlookAttachments 0 %; the REFramework variants have no steps because the template's Process.xaml is a placeholder
-- [ ] **Checkpoint:** run on the samples, then decide together which ontology extensions the unmapped list justifies. Likely candidates:
-  - a `control-flow-loop` class (`ForEachLoop`, `ConditionalLoop`)
-  - generic desktop UI operations (click-button, fill-text-box and press-key already exist as classes without individuals)
-  - SAP operations
-  - an assign/set-variable transient-data operation
-- [ ] Add the agreed extensions to both copies of `rpa-operations.json`
+- [x] **Checkpoint:** run on the samples, then decide together which ontology extensions the unmapped list justifies. Decided on the templates (2026-10-12): loops, assign, Excel range and sheet operations, mail attachments / browser navigation / delete file. SAP and generic desktop UI have no evidence yet (no template uses them); revisit with the real bots
+- [x] Add the agreed extensions to both copies of `rpa-operations.json`: 9 classes and 15 individuals, documented with their evidence in [`docs/ontology-extensions.md`](ontology-extensions.md); the mapping table now uses them, and loops import as `ForEachLoop` / `ConditionalLoop`
+  - Template coverage after the extension: 100 % except TransactionalProcess (75 %, a Flowchart loop-back). This is circular, as the extensions came from the same templates; the evaluation needs bots not used to design them
 
 ## M3: PAD skeleton exporter
 
-- [ ] `backend/src/botLinkers/powerAutomateDesktopLinker/padMapping.ts`: ontology id → PAD Robin action template, e.g. `ExcelReadCellValue → Excel.ReadFromExcel.ReadCell Instance: %ExcelInstance% StartColumn: TODO …`. Container setup/cleanup steps map to `Excel.LaunchExcel…` / `WebAutomation.LaunchEdge…`
+- [ ] `backend/src/botLinkers/powerAutomateDesktopLinker/padMapping.ts` (including the round-1 extensions: loops, `SetVariable`, Excel range and sheet operations, `OutlookSaveAttachments`, `BrowserNavigate`, `DeleteFile`): ontology id → PAD Robin action template, e.g. `ExcelReadCellValue → Excel.ReadFromExcel.ReadCell Instance: %ExcelInstance% StartColumn: TODO …`. Container setup/cleanup steps map to `Excel.LaunchExcel…` / `WebAutomation.LaunchEdge…`
 - [ ] `PowerAutomateDesktopLinker.ts`: implements `BotLinkerStrategyInterface`
   - Walk the tree like `RobotFrameworkLinker.ts`
   - Emit `IF <condition text> THEN/ELSE/END`, `LOOP FOREACH…/END`, and `# TODO (UiPath <activityType>): …` for unmapped or manual nodes
@@ -146,6 +143,7 @@ Front end:
 - [ ] `frontend/src/components/BotOverview/BotOverviewCard.vue` and `frontend/src/utils/utils.ts`: "Power Automate Desktop" export (`.txt`) and a report link
 - [ ] Tolerate unknown or empty concepts so imported bots don't crash metrics and abstraction:
   - [ ] imported trees have no `dataResourceInfo` / `transientDataInfo`, which the front end's `ProcessTree` type requires (`frontend/src/interfaces/BotModel.ts`)
+- [ ] Loops in the modeler: the properties panel lists only context containers for sub-processes (`BotModelerPropertiesPanel.vue`), so it should also offer the loop operations; optionally draw a loop marker
   - [ ] `frontend/src/utils/ontologyParser.ts:258-277` (`getOperationBranch`)
   - [ ] `frontend/src/utils/abstractionContextAnalysis.ts:23-26`
   - [ ] `frontend/src/utils/BpmnModdleParser.ts:197`
