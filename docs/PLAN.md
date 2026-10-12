@@ -18,7 +18,7 @@ Tick boxes as work lands. Paths are relative to the repo root (`backend/…`, `f
 | M2: Mapping + readiness report (#2) | Done (target coverage follows with M3) |
 | M3: PAD skeleton exporter | Done (Robin names not yet validated in PAD) |
 | M4: API + UI integration | Done (BPMN generator stretch open) |
-| Verification | Not started |
+| Verification | In progress (real bots, UI click-through, PAD on Windows) |
 
 ## Context
 
@@ -162,12 +162,14 @@ Front end:
 
 ## Verification
 
-- [ ] `npm test` in `backend/` passes, with unit tests for:
+- [x] `npm test` in `backend/` passes (182 tests), with unit tests for:
   - [x] `xamlReader` (property-element traversal)
   - [x] `UiPathImporter` (each construct produces the expected tree; REFramework detected; Invoke inlined; cycle guard)
-  - [ ] `migrationReport` (counts and coverage on the fixtures)
+  - [x] `migrationReport` (counts and coverage on inline test bots; the fixture bots are still to come, see M0)
   - [x] PAD linker (exact output per construct; no throw on unmapped or unknown nodes; balanced IF/LOOP/SWITCH blocks on every template)
   - [x] every ontology id in `uipathActivityMapping` and `padMapping` exists in `rpa-operations.json`
 - [ ] `npm run import:uipath samples/*`: each real sample imports without errors, and the portfolio table looks plausible against a manual read of one bot
+  - Done for the 11 template bots (`samples/uipath-studio-templates/`); still needs the real client bots
 - [ ] End to end: start Mongo (`docker run -d -p 27017:27017 mongo`), run back end and front end with `npm run dev`, import a sample at `/import`, open its report, download the PAD export
+  - Partly done: import through the API, then the overview, import, report and metrics pages checked with headless Chrome. Still to do by hand: choose a folder on the import page and click the PAD download
 - [ ] On a Windows machine, paste the exported skeleton into the Power Automate Desktop designer and confirm it parses. Mapped actions appear, only TODO parameters are flagged. Fix any action names in `padMapping.ts` that PAD rejects
