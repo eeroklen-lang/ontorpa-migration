@@ -30,6 +30,22 @@ cd backend  && npm install && npm run dev   # API on http://localhost:3001
 cd frontend && npm install && npm run dev   # modeler, URL printed by Vite
 ```
 
+## Importing UiPath bots
+
+The back end can import UiPath projects from the command line and report how much of each bot maps to the ontology:
+
+```bash
+cd backend
+npm run import:uipath -- ../samples/MyBot                 # tree + report for one bot
+npm run import:uipath -- --summary ../samples             # portfolio table for every bot found
+npm run import:uipath -- --pad ../samples/MyBot           # also print a Power Automate Desktop skeleton
+npm run import:uipath -- --out ../samples/output ../samples  # also write JSON reports, PAD skeletons, portfolio.md and portfolio.csv
+```
+
+The Power Automate Desktop skeleton is Robin text that can be pasted into an empty subflow in the PAD designer. Steps without a PAD action, UI elements and VB/C# expressions are marked `TODO`. A stored bot can also be exported with `GET /api/botModels/<id>?type=pad`.
+
+A bot is any folder with a `project.json` or `Main.xaml`; folders are searched recursively. In the tree, `✓` marks steps mapped to an ontology operation, `✗` unmapped ones, `!` steps that need manual redesign and `·` structural scopes.
+
 ## Credits
 
 Built on OntoRPA by Maximilian Völker ([bptlab](https://github.com/bptlab), Hasso Plattner Institute):

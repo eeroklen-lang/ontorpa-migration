@@ -4,8 +4,9 @@ import IBotModel from "../interfaces/BotModelInterface";
 const schema = new Schema<IBotModel>({
   name: { type: String, required: true },
   description: String,
-  model: { type: String, required: true },
+  model: String,
   processTree: { type: String, required: true },
+  source: String,
 });
 
 const BotModel = model<IBotModel>("BotModel", schema);

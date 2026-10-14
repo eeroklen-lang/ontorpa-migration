@@ -21,6 +21,13 @@
     <router-link :to="{ name: 'Modeler' }" v-if="!searchTerm">
       <BotOverviewCard></BotOverviewCard>
     </router-link>
+    <router-link :to="{ name: 'Import' }" v-if="!searchTerm" title="Import a UiPath bot">
+      <div
+        class="relative m-6 rounded-lg h-20 w-44 shadow-md text-center flex flex-col justify-center border-solid border-2 border-action hover:bg-action hover:text-white"
+      >
+        <div><FontAwesomeIcon :icon="faFileImport" /> Import UiPath</div>
+      </div>
+    </router-link>
     <BotOverviewCard
       v-for="botModel in filteredOperations"
       :botModel="botModel"
@@ -83,4 +90,5 @@ import BotModel from "../interfaces/BotModel";
 import BotOverviewCard from "../components/BotOverview/BotOverviewCard.vue";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
+import { faFileImport } from "@fortawesome/free-solid-svg-icons";
 </script>

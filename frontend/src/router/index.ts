@@ -3,6 +3,8 @@ import Modeler from "../views/BotModeler.vue";
 import Overview from "../views/BotOverview.vue";
 import ModelAbstractor from "../views/BotModelAbstractor.vue";
 import ModelMetrics from "../views/BotModelMetrics.vue";
+import Import from "../views/BotImport.vue";
+import MigrationReport from "../views/BotMigrationReport.vue";
 import NotFound from "../views/404.vue";
 
 const routes: Array<RouteRecordRaw> = [
@@ -36,6 +38,22 @@ const routes: Array<RouteRecordRaw> = [
     component: ModelMetrics,
     meta: {
       title: "Model Metrics",
+    },
+  },
+  {
+    path: "/import",
+    name: "Import",
+    component: Import,
+    meta: {
+      title: "Import",
+    },
+  },
+  {
+    path: "/migration/:modelId",
+    name: "MigrationReport",
+    component: MigrationReport,
+    meta: {
+      title: "Migration Report",
     },
   },
   { path: "/:pathMatch(.*)", component: NotFound },

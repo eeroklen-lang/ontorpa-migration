@@ -15,7 +15,8 @@ class App {
 
     app.use(express.static("public"));
 
-    app.use(express.json());
+    // UiPath projects are uploaded as JSON, file by file, and easily exceed the 100 kB default
+    app.use(express.json({ limit: "50mb" }));
 
     app.use("/api/botModels", botModelRoutes);
 

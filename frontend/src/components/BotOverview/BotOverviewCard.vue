@@ -12,7 +12,10 @@
     <div v-if="botModel">
       <div>
         <router-link
-          :to="{ name: 'Modeler', params: { modelId: botModel._id } }"
+          :to="{
+            name: imported ? 'MigrationReport' : 'Modeler',
+            params: { modelId: botModel._id },
+          }"
           >{{ botModel.name }}</router-link
         >
       </div>
@@ -20,7 +23,7 @@
         v-if="cardHovered || hoverLock"
         class="absolute bottom-0 w-full h-8 flex justify-center gap-2"
       >
-        <div class="tooltip tooltip-bottom" data-tip="Explore abstraction">
+        <div v-if="!imported" class="tooltip tooltip-bottom" data-tip="Explore abstraction">
           <router-link
             :to="{
               name: 'ModelAbstractor',
@@ -46,6 +49,19 @@
           </router-link>
         </div>
 
+        <div class="tooltip tooltip-bottom" data-tip="Migration report">
+          <router-link
+            :to="{
+              name: 'MigrationReport',
+              params: { modelId: botModel._id },
+            }"
+          >
+            <div class="m-1">
+              <FontAwesomeIcon :icon="faClipboardCheck" />
+            </div>
+          </router-link>
+        </div>
+
         <div class="tooltip tooltip-bottom" data-tip="Export script">
           <div class="dropdown">
             <div tabindex="0" role="button" class="m-1">
@@ -65,6 +81,9 @@
                 <button class="btn join-item" @click="downloadBot('taskt')">
                   taskt
                 </button>
+                <button class="btn join-item" @click="downloadBot('pad')">
+                  Power Automate Desktop
+                </button>
               </div>
             </div>
           </div>
@@ -78,22 +97,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
-import botModelApi from "../../api/botModelApi";
-import BotModel from "../../interfaces/BotModel";
-import { getFilenameForBot } from "../../utils/utils";
+import { computed, ref } from "vue";
+import BotModel, { isImportedBot } from "../../interfaces/BotModel";
+import { downloadLinkedBot } from "../../utils/utils";
 import { useToast } from "vue-toastification";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { faBinoculars } from "@fortawesome/free-solid-svg-icons";
 import { faDownload } from "@fortawesome/free-solid-svg-icons";
 import { faRuler } from "@fortawesome/free-solid-svg-icons";
+import { faClipboardCheck } from "@fortawesome/free-solid-svg-icons";
 
 // interface BotOverviewCardProps {
 //   botModel: Object as PropType<BotModel>;
 // }
 
 const props = defineProps<{ botModel: BotModel }>();
+
+// Imported bots have no BPMN diagram, so they open in the migration report instead of the modeler
+const imported = computed(() => !!props.botModel && isImportedBot(props.botModel));
 
 const cardHovered = ref(false);
 const hoverLock = ref(false);
@@ -105,18 +127,7 @@ async function downloadBot(targetRpaTool: string) {
     return;
   }
   try {
-    const botFileBlob = await botModelApi.getLinkedBotModel(
-      props.botModel?._id,
-      targetRpaTool
-    );
-    const url = window.URL.createObjectURL(botFileBlob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = getFilenameForBot(props.botModel, targetRpaTool);
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
+    await downloadLinkedBot(props.botModel, targetRpaTool);
   } catch (e) {
     toast.error("Bot could not be linked to " + targetRpaTool + ".\n" + e);
   }
