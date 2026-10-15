@@ -56,9 +56,10 @@ Research angle: the coverage report measures how well the ontology works as an i
 - [x] Generic sample bots: five official UiPath Studio templates in the git-ignored `samples/uipath-studio-templates/` (`REFramework` in 6 variants, `EnterExcelDataIntoWebsite`, `SaveOutlookAttachments`, `SplitExcelSheet`, `TransactionalProcess`). Their license is unspecified, so they are not committed. To fetch them again:
   ```bash
   git clone --filter=blob:none --no-checkout --depth 1 https://github.com/UiPath-Services/StudioTemplates samples/uipath-studio-templates
-  git -C samples/uipath-studio-templates sparse-checkout set --no-cone /REFramework/ /EnterExcelDataIntoWebsite/ /SaveOutlookAttachments/ /SplitExcelSheet/ /TransactionalProcess/
+  MSYS_NO_PATHCONV=1 git -C samples/uipath-studio-templates sparse-checkout set --no-cone /REFramework/ /EnterExcelDataIntoWebsite/ /SaveOutlookAttachments/ /SplitExcelSheet/ /TransactionalProcess/
   git -C samples/uipath-studio-templates checkout
   ```
+  `MSYS_NO_PATHCONV=1` is for Git Bash on Windows, which otherwise rewrites `/REFramework/` into a Windows path, so the checkout silently stays empty. Other shells ignore it.
 - [ ] UiPath test bots under `backend/test/fixtures/uipath/` (Eero adds them; real client bots go in the git-ignored `samples/` instead):
   - [ ] classic sequence
   - [ ] modern Excel + Outlook bot
