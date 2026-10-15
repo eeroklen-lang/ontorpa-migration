@@ -170,6 +170,6 @@ Front end:
   - [x] every ontology id in `uipathActivityMapping` and `padMapping` exists in `rpa-operations.json`
 - [ ] `npm run import:uipath samples/*`: each real sample imports without errors, and the portfolio table looks plausible against a manual read of one bot
   - Done for the 11 template bots (`samples/uipath-studio-templates/`); still needs the real client bots
-- [ ] End to end: start Mongo (`docker run -d -p 27017:27017 mongo`), run back end and front end with `npm run dev`, import a sample at `/import`, open its report, download the PAD export
+- [ ] End to end: start Mongo (`docker compose up -d`), run back end and front end with `npm run dev`, import a sample at `/import`, open its report, download the PAD export
   - Partly done: import through the API, then the overview, import, report and metrics pages checked with headless Chrome. Still to do by hand: choose a folder on the import page and click the PAD download
 - [ ] On a Windows machine, paste the exported skeleton into the Power Automate Desktop designer and confirm it parses. Mapped actions appear, only TODO parameters are flagged. Fix any action names in `padMapping.ts` that PAD rejects
