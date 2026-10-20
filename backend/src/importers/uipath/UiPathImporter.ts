@@ -558,6 +558,7 @@ class UiPathImporter {
       concept,
       mappingStatus,
       source: withoutUndefined(source),
+      imported: { concept, mappingStatus },
     };
     return nodeId;
   }

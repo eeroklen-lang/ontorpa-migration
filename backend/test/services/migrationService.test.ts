@@ -3,6 +3,8 @@ import {
   importUiPathBot,
   MigrationRequestError,
   migrationReportFor,
+  migrationTargetOperations,
+  previewPadStep,
 } from "../../src/services/migrationService";
 
 const MAIN = `<Activity x:Class="Main"
@@ -24,6 +26,7 @@ describe("importUiPathBot", () => {
     expect(JSON.parse(bot.source!).main).toBe("Main.xaml");
     expect(report.target).toBe("Power Automate Desktop");
     expect(report.totals).toMatchObject({ steps: 2, mapped: 1, unmapped: 1 });
+    expect(JSON.parse(bot.importReport!)).toEqual(report);
   });
 
   it("prefers an explicit name over the one in project.json", () => {
@@ -52,6 +55,16 @@ describe("migrationReportFor", () => {
     expect(report.coverage).toEqual({ ontology: 0.5, target: 0.5 });
   });
 
+  it("compares a stored bot with its import", () => {
+    const processTree = JSON.parse(bot.processTree);
+    const unmapped = Object.keys(processTree.nodeInfo).find((id) => !processTree.nodeInfo[id].concept)!;
+    Object.assign(processTree.nodeInfo[unmapped], { concept: "KillProcess", mappingStatus: "mapped" });
+    const report = migrationReportFor({ ...bot, processTree: JSON.stringify(processTree) });
+    expect(report.coverage.ontology).toBe(1);
+    expect(report.review?.atImport.coverage.ontology).toBe(0.5);
+    expect(report.review?.resolved).toMatchObject([{ label: "Stop app", kind: "mapped" }]);
+  });
+
   it("reports ontology coverage only for target 'none'", () => {
     const report = migrationReportFor(bot, "none");
     expect(report.target).toBeUndefined();
@@ -77,5 +90,28 @@ describe("migrationReportFor", () => {
     expect(report.totals).toMatchObject({ steps: 2, mapped: 2, ontologyOnly: 1 });
     expect(report.coverage).toEqual({ ontology: 1, target: 0.5 });
     expect(report.bot.reframework).toBe(false);
+  });
+});
+
+describe("migrationTargetOperations", () => {
+  it("lists the operations PAD generates, sorted", () => {
+    const { pad } = migrationTargetOperations();
+    expect(pad.name).toBe("Power Automate Desktop");
+    expect(pad.operations).toContain("BrowserOpenURL");
+    expect(pad.operations).toContain("BinaryDecision");
+    expect(pad.operations).not.toContain("ExcelExportPDF");
+    expect(pad.operations).toEqual([...pad.operations].sort());
+  });
+});
+
+describe("previewPadStep", () => {
+  it("gives the PAD lines of a step", () => {
+    expect(previewPadStep({ label: "Stop app", concept: "", mappingStatus: "unmapped" })).toEqual([
+      '# TODO "Stop app": no ontology operation, rebuild by hand',
+    ]);
+  });
+
+  it.each([undefined, "step", { label: "No concept" }])("rejects %j", (step) => {
+    expect(() => previewPadStep(step)).toThrow(MigrationRequestError);
   });
 });

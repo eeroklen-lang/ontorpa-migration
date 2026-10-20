@@ -7,6 +7,7 @@ const schema = new Schema<IBotModel>({
   model: String,
   processTree: { type: String, required: true },
   source: String,
+  importReport: String,
 });
 
 const BotModel = model<IBotModel>("BotModel", schema);

@@ -2,7 +2,10 @@ import fs from "fs";
 import path from "path";
 import { describe, expect, it } from "vitest";
 import BotLinkerContext from "../../src/botLinkers/BotLinkerContext";
-import { generatePadFlow } from "../../src/botLinkers/powerAutomateDesktopLinker/PowerAutomateDesktopLinker";
+import {
+  generatePadFlow,
+  padStepLines,
+} from "../../src/botLinkers/powerAutomateDesktopLinker/PowerAutomateDesktopLinker";
 import { padOperationIds, text } from "../../src/botLinkers/powerAutomateDesktopLinker/padMapping";
 import {
   IProcessTree,
@@ -226,6 +229,18 @@ describe("BotLinkerContext", () => {
 describe("padMapping", () => {
   it("only maps ids that exist in the ontology", () => {
     expect(Array.from(padOperationIds()).filter((id) => !isOntologyOperation(id))).toEqual([]);
+  });
+});
+
+describe("padStepLines", () => {
+  it.each([
+    ["a mapped step", { label: "Open page", concept: "BrowserOpenURL", mappingStatus: "mapped", source: uipath("NGoToUrl", { target: "https://example.com", targetLanguage: "Literal" }) }],
+    ["an ontology-only step", { label: "Export", concept: "ExcelExportPDF", mappingStatus: "mapped", source: uipath("ExcelExportPdf") }],
+    ["an unmapped step", { label: "Click", concept: "", mappingStatus: "unmapped", source: uipath("NClick", { context: "desktop" }) }],
+    ["a manual step", { label: "Code", concept: "", mappingStatus: "manual", source: uipath("InvokeCode", { reason: "custom code" }) }],
+    ["a modeled step", { label: "Trim", concept: "StringTrim" }],
+  ] as [string, IProcessTreeNodeInfo][])("matches the flow's lines for %s", (_, info) => {
+    expect(padStepLines(info)).toEqual(body(tree(["Activity_1"], { Activity_1: info })));
   });
 });
 

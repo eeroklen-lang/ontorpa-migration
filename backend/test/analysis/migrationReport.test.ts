@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildMigrationReport } from "../../src/analysis/migrationReport";
+import { buildMigrationReport, buildReview } from "../../src/analysis/migrationReport";
+import { IProcessTreeNodeInfo } from "../../src/interfaces/BotModelInterface";
 import { importProject } from "../../src/importers/uipath/UiPathImporter";
 
 const NAMESPACES = `
@@ -96,5 +97,54 @@ describe("buildMigrationReport", () => {
     const empty = buildMigrationReport(importBot(`<Sequence><ui:LogMessage /></Sequence>`));
     expect(empty.totals.steps).toBe(0);
     expect(empty.coverage.ontology).toBeNull();
+  });
+});
+
+describe("buildReview", () => {
+  const imported = importBot(`
+    <Sequence>
+      ${browserCard(`${click("Save")}<uix:NNavigateBrowser DisplayName="Back" />`)}
+      ${click("Desktop click")}
+      <Assign DisplayName="Set total" />
+      <ui:InvokeCode DisplayName="Custom code" />
+    </Sequence>`);
+  const atImport = buildMigrationReport(imported);
+  const idOf = (label: string) =>
+    Object.keys(imported.processTree.nodeInfo).find((id) => imported.processTree.nodeInfo[id].label === label)!;
+
+  /** The tree after edits in the modeler: statuses as the modeler's save sets them. */
+  function edited() {
+    const nodeInfo: Record<string, IProcessTreeNodeInfo> = JSON.parse(JSON.stringify(imported.processTree.nodeInfo));
+    Object.assign(nodeInfo[idOf("Desktop click")], { concept: "BrowserClickButton", mappingStatus: "mapped" });
+    Object.assign(nodeInfo[idOf("Set total")], { concept: "StringTrim" });
+    Object.assign(nodeInfo[idOf("Back")], { concept: "", mappingStatus: "unmapped" });
+    delete nodeInfo[idOf("Custom code")];
+    nodeInfo.Activity_0new = { label: "Delete export", concept: "DeleteFile" };
+    return { tree: imported.processTree.tree, nodeInfo };
+  }
+
+  it("is empty for a bot as imported", () => {
+    expect(buildReview(atImport, imported.processTree)).toEqual({
+      atImport: { totals: atImport.totals, coverage: atImport.coverage },
+      resolved: [],
+      removedSteps: 0,
+      addedSteps: 0,
+    });
+  });
+
+  it("lists fixed steps, and counts removed and added steps", () => {
+    const review = buildReview(atImport, edited());
+    expect(review.resolved.map((step) => [step.label, step.kind, step.from.concept, step.to.concept])).toEqual([
+      ["Back", "unmapped", "BrowserNavigate", ""],
+      ["Desktop click", "mapped", "", "BrowserClickButton"],
+      ["Set total", "corrected", "SetVariable", "StringTrim"],
+    ]);
+    expect(review.resolved[1]).toMatchObject({
+      activityType: "NClick",
+      from: { status: "unmapped" },
+      to: { status: "mapped" },
+    });
+    expect(review.removedSteps).toBe(1);
+    expect(review.addedSteps).toBe(1);
   });
 });

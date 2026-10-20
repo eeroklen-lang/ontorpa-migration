@@ -1,8 +1,9 @@
-import { buildMigrationReport, MigrationReport } from "../analysis/migrationReport";
+import { buildMigrationReport, buildReview, MigrationReport } from "../analysis/migrationReport";
 import { migrationTargets } from "../analysis/migrationTargets";
+import { padStepLines } from "../botLinkers/powerAutomateDesktopLinker/PowerAutomateDesktopLinker";
 import { generateBpmn } from "../bpmn/bpmnGenerator";
 import { importProject, UiPathProjectInfo } from "../importers/uipath/UiPathImporter";
-import IBotModel, { IProcessTree } from "../interfaces/BotModelInterface";
+import IBotModel, { IProcessTree, IProcessTreeNodeInfo } from "../interfaces/BotModelInterface";
 
 export class MigrationRequestError extends Error {}
 
@@ -32,6 +33,7 @@ export function importUiPathBot(
   if (name?.trim()) {
     imported.name = name.trim();
   }
+  const report = buildMigrationReport(imported, migrationTargets.pad);
   return {
     bot: {
       name: imported.name,
@@ -40,8 +42,9 @@ export function importUiPathBot(
       model: JSON.stringify(generateBpmn(imported.processTree)),
       processTree: JSON.stringify(imported.processTree),
       source: JSON.stringify(imported.source),
+      importReport: JSON.stringify(report),
     },
-    report: buildMigrationReport(imported, migrationTargets.pad),
+    report,
   };
 }
 
@@ -58,8 +61,40 @@ export function migrationReportFor(bot: IBotModel, targetName = "pad"): Migratio
   }
   const processTree: IProcessTree = JSON.parse(bot.processTree);
   const source: UiPathProjectInfo | undefined = bot.source ? JSON.parse(bot.source) : undefined;
-  return buildMigrationReport(
+  const report = buildMigrationReport(
     { name: bot.name, processTree, source },
     targetName === "none" ? undefined : migrationTargets[targetName]
   );
+  if (bot.importReport) {
+    report.review = buildReview(JSON.parse(bot.importReport), processTree);
+  }
+  return report;
+}
+
+/** The operations each migration target can generate, by the target's name in the API. */
+export function migrationTargetOperations(): Record<string, { name: string; operations: string[] }> {
+  return Object.fromEntries(
+    Object.entries(migrationTargets).map(([key, target]) => [
+      key,
+      { name: target.name, operations: Array.from(target.operations).sort() },
+    ])
+  );
+}
+
+/**
+ * The Power Automate Desktop lines a single step exports as, to preview it in the modeler.
+ *
+ * @param step - the step's node info: label, concept, and for imported steps mapping status and source
+ */
+export function previewPadStep(step: unknown): string[] {
+  const candidate = step as Partial<IProcessTreeNodeInfo> | undefined;
+  if (
+    !candidate ||
+    typeof candidate !== "object" ||
+    typeof candidate.label !== "string" ||
+    typeof candidate.concept !== "string"
+  ) {
+    throw new MigrationRequestError("Expected a step with a label and a concept.");
+  }
+  return padStepLines(candidate as IProcessTreeNodeInfo);
 }
