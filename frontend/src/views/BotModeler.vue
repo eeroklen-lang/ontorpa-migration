@@ -53,6 +53,9 @@
           v-if="modelerShown"
           :modeler="modeler"
           :element="element"
+          :node-info="selectedNodeInfo"
+          :target-operations="targetOperations"
+          :target-name="target?.name"
         ></BotModelerPropertiesPanel>
         <MigrationChecklist
           v-if="modelerShown"
@@ -130,6 +133,10 @@ const targetOperations = computed(() =>
 );
 const counts = ref<StepCounts>();
 const checklist = ref<ChecklistItem[]>([]);
+const selectedNodeInfo = computed(() => {
+  const id = element.value?.businessObject?.id;
+  return id ? botModel.value.processTree?.nodeInfo?.[id] : undefined;
+});
 let migrationStateTimer: ReturnType<typeof setTimeout> | undefined;
 
 onMounted(async () => {
