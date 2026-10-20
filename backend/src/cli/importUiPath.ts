@@ -3,6 +3,7 @@ import path from "path";
 import { buildMigrationReport } from "../analysis/migrationReport";
 import { migrationTargets } from "../analysis/migrationTargets";
 import { generatePadFlow } from "../botLinkers/powerAutomateDesktopLinker/PowerAutomateDesktopLinker";
+import { generateBpmn } from "../bpmn/bpmnGenerator";
 import { importProject } from "../importers/uipath/UiPathImporter";
 import {
   portfolioCsv,
@@ -20,7 +21,7 @@ prints its process tree and migration report, and ends with a portfolio table.
   --summary     print only the portfolio table
   --pad         also print the Power Automate Desktop skeleton of each bot
   --out <dir>   also write <bot>.json (import result + report), <bot>.pad.txt,
-                portfolio.md and portfolio.csv`;
+                <bot>.bpmn (diagram), portfolio.md and portfolio.csv`;
 
 
 // Folders that never contain workflows: Studio metadata, git, dependencies
@@ -87,6 +88,7 @@ function main(args: string[]) {
         const file = path.join(outDir, slug(displayPath));
         fs.writeFileSync(`${file}.json`, JSON.stringify({ import: imported, report }, null, 2));
         fs.writeFileSync(`${file}.pad.txt`, padFlow);
+        fs.writeFileSync(`${file}.bpmn`, generateBpmn(imported.processTree));
       }
     }
   }

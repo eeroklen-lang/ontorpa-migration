@@ -74,15 +74,7 @@ class PadWriter {
     if (!info) {
       return [comment(`TODO: unknown step ${nodeId}`)];
     }
-    const step: PadStep = { label: info.label, source: info.source };
-    const status = info.mappingStatus || (info.concept ? "mapped" : "unmapped");
-    if (status !== "mapped") {
-      return [this.unmappedComment(info)];
-    }
-    const action = padActionFor(info.concept);
-    return action
-      ? action(step)
-      : [todo(step, `no Power Automate Desktop action for ${info.concept} yet`)];
+    return padStepLines(info);
   }
 
   private block(key: string, children: TreeItem[], depth: number): string[] {
@@ -114,7 +106,7 @@ class PadWriter {
     const context = info?.source?.context;
     const hint =
       info?.mappingStatus === "manual" || info?.mappingStatus === "unmapped"
-        ? this.unmappedComment(info)
+        ? unmappedComment(info)
         : todo(
             step,
             context
@@ -210,16 +202,32 @@ class PadWriter {
     this.placeholders.push(declaration(name));
     return name;
   }
+}
 
-  private unmappedComment(info: IProcessTreeNodeInfo): string {
-    const source = info.source;
-    const origin = source ? ` (UiPath ${source.activityType}${source.context ? ` in ${source.context}` : ""})` : "";
-    const reason =
-      info.mappingStatus === "manual"
-        ? source?.reason || "needs manual redesign"
-        : "no ontology operation, rebuild by hand";
-    return comment(`TODO "${info.label}"${origin}: ${reason}`);
+/**
+ * The PAD lines of a single step (not a gateway, loop or container): its action, or a TODO
+ * comment if there is none. Also used to preview a step in the modeler.
+ */
+export function padStepLines(info: IProcessTreeNodeInfo): string[] {
+  const step: PadStep = { label: info.label, source: info.source };
+  const status = info.mappingStatus || (info.concept ? "mapped" : "unmapped");
+  if (status !== "mapped") {
+    return [unmappedComment(info)];
   }
+  const action = padActionFor(info.concept);
+  return action
+    ? action(step)
+    : [todo(step, `no Power Automate Desktop action for ${info.concept} yet`)];
+}
+
+function unmappedComment(info: IProcessTreeNodeInfo): string {
+  const source = info.source;
+  const origin = source ? ` (UiPath ${source.activityType}${source.context ? ` in ${source.context}` : ""})` : "";
+  const reason =
+    info.mappingStatus === "manual"
+      ? source?.reason || "needs manual redesign"
+      : "no ontology operation, rebuild by hand";
+  return comment(`TODO "${info.label}"${origin}: ${reason}`);
 }
 
 export default PowerAutomateDesktopLinker;

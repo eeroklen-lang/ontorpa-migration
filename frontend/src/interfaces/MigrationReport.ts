@@ -1,3 +1,5 @@
+import { MappingStatus } from "./BotModel";
+
 /** Migration readiness report of a bot, as returned by the back end (see its analysis/migrationReport.ts). */
 export interface MigrationReport {
   bot: {
@@ -33,4 +35,23 @@ export interface MigrationReport {
     configFiles: string[];
     selectors: number;
   };
+  /** For stored imported bots: how the bot changed since the import. */
+  review?: MigrationReview;
+}
+
+export interface MigrationReview {
+  atImport: Pick<MigrationReport, "totals" | "coverage">;
+  resolved: ResolvedStep[];
+  removedSteps: number;
+  addedSteps: number;
+}
+
+export interface ResolvedStep {
+  id: string;
+  label: string;
+  activityType?: string;
+  /** mapped: got an operation; corrected: got another operation; unmapped: lost its operation */
+  kind: "mapped" | "corrected" | "unmapped";
+  from: { concept: string; status: MappingStatus };
+  to: { concept: string; status: MappingStatus };
 }

@@ -97,6 +97,21 @@ export default defineComponent({
 });
 </script>
 
+<style>
+/* Migration status of steps, marked by the modeler; the colours match MigrationChecklist.vue */
+.djs-element.migration-unmapped .djs-visual > :nth-child(1) {
+  stroke: #dc2626 !important;
+  fill: #fee2e2 !important;
+}
+.djs-element.migration-manual .djs-visual > :nth-child(1) {
+  stroke: #d97706 !important;
+  fill: #fef3c7 !important;
+}
+.djs-element.migration-ontology-only .djs-visual > :nth-child(1) {
+  stroke: #0284c7 !important;
+  fill: #e0f2fe !important;
+}
+</style>
 <style src="bpmn-js/dist/assets/diagram-js.css"></style>
 <style src="bpmn-js/dist/assets/bpmn-font/css/bpmn-embedded.css"></style>
 <!-- <style src="bpmn-js-properties-panel/dist/assets/properties-panel.css"></style> -->

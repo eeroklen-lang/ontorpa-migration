@@ -13,7 +13,7 @@
       <div>
         <router-link
           :to="{
-            name: imported ? 'MigrationReport' : 'Modeler',
+            name: diagram ? 'Modeler' : 'MigrationReport',
             params: { modelId: botModel._id },
           }"
           >{{ botModel.name }}</router-link
@@ -23,7 +23,7 @@
         v-if="cardHovered || hoverLock"
         class="absolute bottom-0 w-full h-8 flex justify-center gap-2"
       >
-        <div v-if="!imported" class="tooltip tooltip-bottom" data-tip="Explore abstraction">
+        <div v-if="diagram" class="tooltip tooltip-bottom" data-tip="Explore abstraction">
           <router-link
             :to="{
               name: 'ModelAbstractor',
@@ -88,6 +88,12 @@
             </div>
           </div>
         </div>
+
+        <div class="tooltip tooltip-bottom" data-tip="Delete bot">
+          <div class="m-1 cursor-pointer" @click="deleteBot">
+            <FontAwesomeIcon :icon="faTrash" />
+          </div>
+        </div>
       </div>
     </div>
     <div v-else>
@@ -98,7 +104,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import BotModel, { isImportedBot } from "../../interfaces/BotModel";
+import BotModel, { hasDiagram } from "../../interfaces/BotModel";
 import { downloadLinkedBot } from "../../utils/utils";
 import { useToast } from "vue-toastification";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
@@ -107,15 +113,18 @@ import { faBinoculars } from "@fortawesome/free-solid-svg-icons";
 import { faDownload } from "@fortawesome/free-solid-svg-icons";
 import { faRuler } from "@fortawesome/free-solid-svg-icons";
 import { faClipboardCheck } from "@fortawesome/free-solid-svg-icons";
+import { faTrash } from "@fortawesome/free-solid-svg-icons";
+import botModelApi from "../../api/botModelApi";
 
 // interface BotOverviewCardProps {
 //   botModel: Object as PropType<BotModel>;
 // }
 
 const props = defineProps<{ botModel: BotModel }>();
+const emit = defineEmits<{ (e: "deleted", botModelId: string): void }>();
 
-// Imported bots have no BPMN diagram, so they open in the migration report instead of the modeler
-const imported = computed(() => !!props.botModel && isImportedBot(props.botModel));
+// Bots imported before diagrams were generated open in the migration report instead of the modeler
+const diagram = computed(() => !!props.botModel && hasDiagram(props.botModel));
 
 const cardHovered = ref(false);
 const hoverLock = ref(false);
@@ -130,6 +139,20 @@ async function downloadBot(targetRpaTool: string) {
     await downloadLinkedBot(props.botModel, targetRpaTool);
   } catch (e) {
     toast.error("Bot could not be linked to " + targetRpaTool + ".\n" + e);
+  }
+}
+
+async function deleteBot() {
+  const botModel = props.botModel;
+  if (!botModel?._id || !window.confirm(`Delete "${botModel.name}"? This cannot be undone.`)) {
+    return;
+  }
+  try {
+    await botModelApi.deleteBotModel(botModel._id);
+    toast.success(`Deleted "${botModel.name}".`);
+    emit("deleted", botModel._id);
+  } catch (e) {
+    toast.error("Bot could not be deleted.\n" + e);
   }
 }
 </script>

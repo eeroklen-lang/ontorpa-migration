@@ -1,6 +1,7 @@
 import express from "express";
 import mongoose from "mongoose";
 import botModelRoutes from "./routes/botModelRoutes";
+import migrationTargetRoutes from "./routes/migrationTargetRoutes";
 import cors from "cors";
 
 class App {
@@ -19,6 +20,7 @@ class App {
     app.use(express.json({ limit: "50mb" }));
 
     app.use("/api/botModels", botModelRoutes);
+    app.use("/api/migrationTargets", migrationTargetRoutes);
 
     app.listen(App.port, () => {
       console.log(`Server listening on http://localhost:${App.port} ...`);

@@ -1,12 +1,14 @@
 interface IBotModel {
   name: string;
   description?: string;
-  /** BPMN diagram (JSON string); imported bots have none until a diagram is generated. */
+  /** BPMN diagram (JSON string of the XML); bots imported before diagrams were generated have none. */
   model?: string;
   /** Process tree (JSON string of IProcessTree). */
   processTree: string;
   /** For imported bots: information about the source project (JSON string). */
   source?: string;
+  /** For imported bots: the migration report at import (JSON string), to compare fixes against. */
+  importReport?: string;
 }
 
 /**
@@ -45,6 +47,8 @@ export interface IProcessTreeNodeInfo {
   concept: string;
   source?: IProcessTreeNodeSource;
   mappingStatus?: MappingStatus;
+  /** For imported nodes: the importer's result, kept when the bot is edited in the modeler. */
+  imported?: { concept: string; mappingStatus: MappingStatus };
 }
 export type IProcessTreeStructure = Record<
   string,

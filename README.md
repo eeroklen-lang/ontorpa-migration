@@ -41,12 +41,20 @@ cd backend
 npm run import:uipath -- ../samples/MyBot                 # tree + report for one bot
 npm run import:uipath -- --summary ../samples             # portfolio table for every bot found
 npm run import:uipath -- --pad ../samples/MyBot           # also print a Power Automate Desktop skeleton
-npm run import:uipath -- --out ../samples/output ../samples  # also write JSON reports, PAD skeletons, portfolio.md and portfolio.csv
+npm run import:uipath -- --out ../samples/output ../samples  # also write JSON reports, PAD skeletons, BPMN diagrams, portfolio.md and portfolio.csv
 ```
 
 The Power Automate Desktop skeleton is Robin text that can be pasted into an empty subflow in the PAD designer. Steps without a PAD action, UI elements and VB/C# expressions are marked `TODO`. A stored bot can also be exported with `GET /api/botModels/<id>?type=pad`.
 
 A bot is any folder with a `project.json` or `Main.xaml`; folders are searched recursively. In the tree, `✓` marks steps mapped to an ontology operation, `✗` unmapped ones, `!` steps that need manual redesign and `·` structural scopes.
+
+The `.bpmn` diagrams open in any BPMN tool, such as [bpmn.io](https://demo.bpmn.io) or Camunda Modeler.
+
+## Finishing a migration in the modeler
+
+Bots imported on the **Import UiPath** page get a BPMN diagram and open in the modeler. There, the diagram marks what keeps a bot from exporting cleanly to Power Automate Desktop: red steps have no ontology operation, amber steps need manual redesign, and blue steps have an operation that PAD has no action for yet. The migration checklist beside the diagram lists these steps with the live ontology and PAD coverage; clicking one selects it. For a selected step, the properties panel shows where it came from in UiPath and the PAD lines it exports as, and lists the operations for its application first.
+
+Fix a step by choosing an operation for it, or redesign that part of the diagram, then save. Saving keeps each step's UiPath information, and the migration report shows the coverage at import next to the steps resolved since.
 
 ## Credits
 

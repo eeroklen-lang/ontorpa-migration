@@ -1,6 +1,7 @@
 import {
   IProcessTree,
   IProcessTreeNodeInfo,
+  MappingStatus,
 } from "../interfaces/BotModelInterface";
 import {
   CatchInfo,
@@ -65,6 +66,32 @@ export interface MigrationReport {
     /** UI activities with selectors to re-capture in the target tool. */
     selectors: number;
   };
+  /** For stored imported bots: how the bot changed since the import, e.g. steps fixed in the modeler. */
+  review?: MigrationReview;
+}
+
+export interface MigrationReview {
+  /** What the importer achieved on its own. */
+  atImport: { totals: MigrationReport["totals"]; coverage: MigrationReport["coverage"] };
+  /** Imported steps whose operation or status differs from the import. */
+  resolved: ResolvedStep[];
+  /** Imported steps that are no longer in the bot. */
+  removedSteps: number;
+  /** Steps modeled after the import. */
+  addedSteps: number;
+}
+
+export interface ResolvedStep {
+  id: string;
+  label: string;
+  activityType?: string;
+  /**
+   * mapped: an unmapped, manual or structural step got an operation; corrected: a mapped step
+   * got another operation; unmapped: a mapped step lost its operation
+   */
+  kind: "mapped" | "corrected" | "unmapped";
+  from: { concept: string; status: MappingStatus };
+  to: { concept: string; status: MappingStatus };
 }
 
 const SOFTWARE_NAMES: Record<string, string> = {
@@ -113,7 +140,6 @@ export function buildMigrationReport(
   // Bots modeled in OntoRPA have no source project, and their nodes no mapping status
   const source = imported.source ?? modeledBotInfo();
   const nodes = Object.values(imported.processTree.nodeInfo);
-  const statusOf = (n: IProcessTreeNodeInfo) => n.mappingStatus ?? (n.concept ? "mapped" : "unmapped");
   const withStatus = (status: string) => nodes.filter((n) => statusOf(n) === status);
 
   const mapped = withStatus("mapped");
@@ -165,6 +191,53 @@ export function buildMigrationReport(
     report.coverage.target = share(generated.length);
   }
   return report;
+}
+
+/**
+ * Compares a stored imported bot with its report at import: which steps were fixed, removed or
+ * added since, typically in the modeler.
+ */
+export function buildReview(importReport: MigrationReport, processTree: IProcessTree): MigrationReview {
+  const resolved: ResolvedStep[] = [];
+  let importedSteps = 0;
+  let addedSteps = 0;
+
+  for (const [id, node] of Object.entries(processTree.nodeInfo)) {
+    const status = statusOf(node);
+    if (!node.imported) {
+      addedSteps += status === "structural" ? 0 : 1;
+      continue;
+    }
+    importedSteps += node.imported.mappingStatus === "structural" ? 0 : 1;
+    if (node.imported.concept === node.concept && node.imported.mappingStatus === status) {
+      continue;
+    }
+    resolved.push({
+      id,
+      label: node.label,
+      activityType: node.source?.activityType,
+      kind:
+        status !== "mapped"
+          ? "unmapped"
+          : node.imported.mappingStatus === "mapped"
+          ? "corrected"
+          : "mapped",
+      from: { concept: node.imported.concept, status: node.imported.mappingStatus },
+      to: { concept: node.concept, status },
+    });
+  }
+
+  return {
+    atImport: { totals: importReport.totals, coverage: importReport.coverage },
+    resolved,
+    removedSteps: Math.max(0, importReport.totals.steps - importedSteps),
+    addedSteps,
+  };
+}
+
+/** Modeled nodes have no mapping status: they are mapped if they have an operation. */
+function statusOf(node: IProcessTreeNodeInfo): MappingStatus {
+  return node.mappingStatus ?? (node.concept ? "mapped" : "unmapped");
 }
 
 function modeledBotInfo(): UiPathProjectInfo {
