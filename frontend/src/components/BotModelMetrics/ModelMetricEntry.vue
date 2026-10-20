@@ -7,7 +7,7 @@
       </div>
     </span>
 
-    <span v-else> {{ props.modelMetric.value }}</span>
+    <span v-else> {{ Number.isNaN(props.modelMetric.value) ? "–" : props.modelMetric.value }}</span>
 
     <span v-if="props.modelMetric.percentage">%</span>
     <div
@@ -33,7 +33,8 @@ const props = defineProps<{ modelMetric: BotModelMetric }>();
 
 const roundedValue = computed(() => {
   const currentValue = props.modelMetric.value;
-  if (Number.isInteger(currentValue)) {
+  // A ratio over nothing is NaN, e.g. data resource access in a bot without data resources
+  if (Number.isInteger(currentValue) || !Number.isFinite(currentValue)) {
     return undefined;
   }
   if (
