@@ -1,10 +1,11 @@
-# Development plan: UiPath → Power Automate, first slice
+# Development plan: UiPath → Power Automate
 
-Covers issue #1 (bot import) and issue #2 (activity mapping). The pipeline:
+Covers issue #1 (bot import) and issue #2 (activity mapping) in M1–M4, and the modeler as the place where a migration is finished in M5. The pipeline:
 
 ```
 UiPath .xaml → ontology process tree → (a) migration readiness report
-                                     → (b) Power Automate Desktop (PAD) skeleton flow
+                      ↑   ↓          → (b) Power Automate Desktop (PAD) skeleton flow
+          BPMN diagram, fixed in the modeler (M5)
 ```
 
 Tick boxes as work lands. Paths are relative to the repo root (`backend/…`, `frontend/…`).
@@ -150,14 +151,14 @@ Front end:
 - [x] `frontend/src/views/BotImport.vue` (route `/import`): `<input webkitdirectory>` reads `.xaml` and `.json` files (others by name only, metadata folders skipped), optional bot name, then posts them and opens the report
 - [x] `frontend/src/views/BotMigrationReport.vue` (route `/migration/:modelId`): coverage tiles (ontology, PAD), process tree with status marks, unmapped activities, applications with evidence, manual work, source project, PAD download
 - [x] `frontend/src/api/botModelApi.ts`: `importUiPath` and `getMigrationReport`; report type in `frontend/src/interfaces/MigrationReport.ts`
-- [x] `frontend/src/components/BotOverview/BotOverviewCard.vue` and `frontend/src/utils/utils.ts`: "Power Automate Desktop" export (`.txt`), a report link on every bot; imported bots open the report instead of the modeler and hide the abstraction link (abstraction is only applied to the diagram). Overview has an "Import UiPath" tile
+- [x] `frontend/src/components/BotOverview/BotOverviewCard.vue` and `frontend/src/utils/utils.ts`: "Power Automate Desktop" export (`.txt`), a report link on every bot; imported bots open the report instead of the modeler and hide the abstraction link (abstraction is only applied to the diagram; since M5 this applies only to bots imported before M5, which have no diagram). Overview has an "Import UiPath" tile
 - [x] Tolerate imported bots in the existing views:
   - [x] `parseBotModel` accepts bots without a diagram and fills in the missing `dataResourceInfo` / `transientDataInfo`
   - [x] `getOperationBranch` (`ontologyParser.ts`) returns a short branch for unmapped steps and context containers instead of throwing
   - [x] `abstractionContextAnalysis.ts` accepts unknown concepts and a first step without software context
   - [x] `BpmnModdleParser.ts` threw on elements without an operation; fixed in M5
   - Checked: the front end's metrics calculator and abstractor run on imported templates; the metrics page shows the metrics of an imported bot (no diagram)
-- [x] Loops in the modeler: the properties panel offers the loop operations (and any other `CompoundActivity` operation) for sub-processes, next to the context containers. A loop marker is not drawn yet
+- [x] Loops in the modeler: the properties panel offers the loop operations (and any other `CompoundActivity` operation) for sub-processes, next to the context containers. A loop marker is not drawn yet for loops modeled by hand; generated diagrams have one (M5)
 - Checked with headless Chrome screenshots against the running dev servers: overview, import page, report page (all-mapped bot and a bot with unmapped and manual steps), metrics page
 - `npm run build` in `frontend/` still fails on the 89 type errors that were there before; the changes add none (88 now)
 - [x] Stretch: process tree → BPMN XML with auto-layout and `rpa:operation` attributes, so imported bots open in the modeler and abstraction views; done in M5 (`backend/src/bpmn/`)
@@ -189,6 +190,7 @@ Front end:
 - [x] Properties panel: the step's UiPath source and import status, its PAD lines, and the operation list with the step's application first and PAD actions marked
 - [x] Overview opens bots with a diagram in the modeler; the report links to the modeler and shows coverage at import and the resolved steps
 - [x] Fixed: the metrics page broke on ratios over nothing (NaN), e.g. data resource access in a bot without data resources
+- [x] Overview cards have a delete button (asks for confirmation, then removes the card)
 - Bots imported before M5 have no diagram: re-import them
 
 Checked with headless Chrome (DevTools protocol) against the dev servers, on imported templates: diagrams and colours in the modeler (TransactionalProcess, SaveOutlookAttachments, EnterExcelDataIntoWebsite); checklist numbers equal the report; correcting an operation (PAD 50 % → 100 %) and removing the manual Flowchart loop-back step, then saving, gives the expected review and PAD export; a loose task is listed; the inspector shows source and PAD lines; abstraction and metrics pages show the diagram, and abstraction aggregates the generated steps
@@ -207,5 +209,5 @@ Checked with headless Chrome (DevTools protocol) against the dev servers, on imp
 - [ ] `npm run import:uipath samples/*`: each real sample imports without errors, and the portfolio table looks plausible against a manual read of one bot
   - Done for the 11 template bots (`samples/uipath-studio-templates/`); still needs the real client bots
 - [ ] End to end: start Mongo (`docker compose up -d`), run back end and front end with `npm run dev`, import a sample at `/import`, open its report, download the PAD export
-  - Partly done: import through the API, then the overview, import, report and metrics pages checked with headless Chrome. Still to do by hand: choose a folder on the import page and click the PAD download
+  - Partly done: import through the API, then the overview, import, report and metrics pages checked with headless Chrome; since M5 also the modeler workflow (edit, save, review in the report, PAD export after the fix) and deleting from the overview. Still to do by hand: choose a folder on the import page and click the PAD download
 - [ ] On a Windows machine, paste the exported skeleton into the Power Automate Desktop designer and confirm it parses. Mapped actions appear, only TODO parameters are flagged. Fix any action names in `padMapping.ts` that PAD rejects
