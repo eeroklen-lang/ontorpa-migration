@@ -1,13 +1,21 @@
 import axios from "axios";
 import BotModel, {
   parseBotModel,
+  ProcessTreeNodeInfo,
   stringifyBotModel,
 } from "../interfaces/BotModel";
 import { MigrationReport } from "../interfaces/MigrationReport";
 
 // The back end runs on port 3001 of the same machine that serves the page, so the app also
 // works when opened from another computer (e.g. http://192.168.1.101:5173)
-const API_URL = `${window.location.protocol}//${window.location.hostname}:3001/api/BotModels`;
+const API_BASE = `${window.location.protocol}//${window.location.hostname}:3001/api`;
+const API_URL = `${API_BASE}/BotModels`;
+
+/** A target RPA tool and the ontology operations it can generate. */
+export interface MigrationTarget {
+  name: string;
+  operations: string[];
+}
 
 export default {
   async getBotModels(): Promise<BotModel[]> {
@@ -87,6 +95,16 @@ export default {
       { params: { target } }
     );
     return res.data as MigrationReport;
+  },
+  /** The migration targets by name in the API, e.g. "pad". */
+  async getMigrationTargets(): Promise<Record<string, MigrationTarget>> {
+    const res = await axios.get(`${API_BASE}/migrationTargets`);
+    return res.data as Record<string, MigrationTarget>;
+  },
+  /** The Power Automate Desktop lines a single step exports as. */
+  async previewPadStep(step: ProcessTreeNodeInfo): Promise<string[]> {
+    const res = await axios.post(`${API_BASE}/migrationTargets/pad/preview`, { step });
+    return res.data.lines as string[];
   },
   async deleteBotModel(botModelId: string): Promise<void> {
     await axios.delete(`${API_URL}/${botModelId}`);

@@ -75,8 +75,15 @@ import {
 import BotOperationSidebar from "../components/BotModeler/BotOperationSidebar.vue";
 import { bpmnMapping } from "../utils/bpmnMapping";
 import { BpmoConcept } from "../interfaces/bpmoConcepts";
-import BpmnModdleParser from "../utils/BpmnModdleParser";
-import BotModel, { createDefaultBotModel } from "../interfaces/BotModel";
+import BpmnModdleParser, {
+  findStructureProblems,
+  ProcessStructureError,
+} from "../utils/BpmnModdleParser";
+import { mergeProcessTree } from "../utils/migrationStatus";
+import BotModel, {
+  createDefaultBotModel,
+  ProcessTree,
+} from "../interfaces/BotModel";
 import botModelApi from "../api/botModelApi";
 import YAML from "yaml";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
@@ -140,15 +147,33 @@ async function saveBot() {
     toast.warning("Please name your new bot before saving.");
     return;
   }
+  let processTree: ProcessTree;
+  try {
+    // Imported steps keep their UiPath source and import result
+    processTree = mergeProcessTree(
+      botModel.value.processTree,
+      new BpmnModdleParser().parseBpmnModdle(modeler.value._definitions)
+    );
+  } catch (e) {
+    if (e instanceof ProcessStructureError) {
+      toast.error("Bot could not be saved.\n" + e.message);
+      if (e.elementId) {
+        showElement(e.elementId);
+      }
+    } else {
+      toast.error("Bot could not be saved.\n" + e);
+    }
+    return;
+  }
+  // Saving still works, but these parts of the diagram are not in the bot
+  const leftOut = findStructureProblems(modeler.value._definitions, processTree);
+  if (leftOut.length > 0) {
+    toast.warning(leftOut.map((problem) => problem.message).join("\n"));
+  }
   try {
     const diagramXML = await modeler.value.saveXML();
     botModel.value.model = diagramXML.xml;
-
-    const bpmnModdleParser = new BpmnModdleParser();
-
-    botModel.value.processTree = bpmnModdleParser.parseBpmnModdle(
-      modeler.value._definitions
-    );
+    botModel.value.processTree = processTree;
 
     if (botModel.value._id) {
       await botModelApi.updateBotModel(botModel.value);
@@ -164,6 +189,16 @@ async function saveBot() {
   } catch (e) {
     toast.error("Bot could not be saved.\n" + e);
   }
+}
+
+/** Selects a diagram element and scrolls it into view. */
+function showElement(elementId: string) {
+  const element = modeler.value.get("elementRegistry").get(elementId);
+  if (!element) {
+    return;
+  }
+  modeler.value.get("selection").select(element);
+  modeler.value.get("canvas").scrollToElement(element);
 }
 
 async function deleteBot() {

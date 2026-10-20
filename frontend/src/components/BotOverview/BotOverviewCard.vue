@@ -13,7 +13,7 @@
       <div>
         <router-link
           :to="{
-            name: imported ? 'MigrationReport' : 'Modeler',
+            name: diagram ? 'Modeler' : 'MigrationReport',
             params: { modelId: botModel._id },
           }"
           >{{ botModel.name }}</router-link
@@ -23,7 +23,7 @@
         v-if="cardHovered || hoverLock"
         class="absolute bottom-0 w-full h-8 flex justify-center gap-2"
       >
-        <div v-if="!imported" class="tooltip tooltip-bottom" data-tip="Explore abstraction">
+        <div v-if="diagram" class="tooltip tooltip-bottom" data-tip="Explore abstraction">
           <router-link
             :to="{
               name: 'ModelAbstractor',
@@ -98,7 +98,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import BotModel, { isImportedBot } from "../../interfaces/BotModel";
+import BotModel, { hasDiagram } from "../../interfaces/BotModel";
 import { downloadLinkedBot } from "../../utils/utils";
 import { useToast } from "vue-toastification";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
@@ -114,8 +114,8 @@ import { faClipboardCheck } from "@fortawesome/free-solid-svg-icons";
 
 const props = defineProps<{ botModel: BotModel }>();
 
-// Imported bots have no BPMN diagram, so they open in the migration report instead of the modeler
-const imported = computed(() => !!props.botModel && isImportedBot(props.botModel));
+// Bots imported before diagrams were generated open in the migration report instead of the modeler
+const diagram = computed(() => !!props.botModel && hasDiagram(props.botModel));
 
 const cardHovered = ref(false);
 const hoverLock = ref(false);

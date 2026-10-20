@@ -4,11 +4,13 @@ interface BotModel {
   _id?: string;
   name: string;
   description?: string;
-  /** BPMN diagram; empty for imported bots, which have only a process tree. */
+  /** BPMN diagram; empty for bots imported before diagrams were generated. */
   model: string;
   processTree: ProcessTree;
   /** Source project of an imported bot (see the back end's UiPathProjectInfo). */
   source?: BotModelSource;
+  /** Migration report at import, as a JSON string; the back end compares fixes against it. */
+  importReport?: string;
 }
 
 export interface BotModelSource {
@@ -51,6 +53,8 @@ export interface ProcessTreeNodeInfo {
   concept: string;
   mappingStatus?: MappingStatus;
   source?: ProcessTreeNodeSource;
+  /** For imported steps: the importer's result, kept when the bot is edited. */
+  imported?: { concept: string; mappingStatus: MappingStatus };
   dataResourceInput?: string[];
   variableInput?: string[];
   dataResourceOutput?: string[];
@@ -70,14 +74,20 @@ export function createDefaultBotModel(): BotModel {
   };
 }
 
+/** A copy of the bot with the fields the back end stores as JSON strings encoded. */
 export function stringifyBotModel(botModel: BotModel): BotModel {
-  botModel.model = JSON.stringify(botModel.model);
-  botModel.processTree = JSON.stringify(botModel.processTree);
-  return botModel;
+  return {
+    ...botModel,
+    model: JSON.stringify(botModel.model),
+    processTree: JSON.stringify(botModel.processTree) as unknown as ProcessTree,
+    ...(botModel.source
+      ? { source: JSON.stringify(botModel.source) as unknown as BotModelSource }
+      : {}),
+  };
 }
 
 export function parseBotModel(botModel: BotModel): BotModel {
-  // Imported bots have no diagram, and their process trees no data resources or variables
+  // Older imported bots have no diagram, and imported process trees no data resources or variables
   botModel.model = botModel.model ? JSON.parse(botModel.model) : "";
   botModel.processTree = {
     dataResourceInfo: {},
@@ -90,9 +100,9 @@ export function parseBotModel(botModel: BotModel): BotModel {
   return botModel;
 }
 
-/** True for bots imported from another RPA tool, which have no BPMN diagram to open in the modeler. */
-export function isImportedBot(botModel: BotModel): boolean {
-  return !!botModel.source && !botModel.model;
+/** False for bots imported before diagrams were generated: they open in the migration report only. */
+export function hasDiagram(botModel: BotModel): boolean {
+  return !!botModel.model;
 }
 
 export default BotModel;
