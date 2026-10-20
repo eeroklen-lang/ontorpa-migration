@@ -24,11 +24,13 @@ The development plan and its progress are tracked in [`docs/PLAN.md`](docs/PLAN.
 Requirements: Node.js and Docker (for MongoDB).
 
 ```bash
-docker run -d --name ontorpa-mongo -p 27017:27017 mongo
+docker compose up -d                        # MongoDB on 127.0.0.1:27017
 
 cd backend  && npm install && npm run dev   # API on http://localhost:3001
 cd frontend && npm install && npm run dev   # modeler, URL printed by Vite
 ```
+
+The back end only starts serving the API once it has connected to MongoDB. The database keeps its data in the `mongo-data` volume, so `docker compose down` keeps stored bots; `docker compose down -v` deletes them. MongoDB is only reachable from this machine.
 
 ## Importing UiPath bots
 

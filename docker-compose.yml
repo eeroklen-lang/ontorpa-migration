@@ -1,0 +1,19 @@
+# MongoDB for the back end, which connects to 127.0.0.1:27017 by default.
+# The port is bound to localhost only: the database has no password and stores imported bots.
+services:
+  mongo:
+    # Mongoose 6 is not tested against newer MongoDB releases
+    image: mongo:7.0
+    container_name: ontorpa-mongo
+    ports:
+      - "127.0.0.1:27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mongo-data:
