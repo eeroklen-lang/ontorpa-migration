@@ -16,10 +16,10 @@ const MAIN = `<Activity x:Class="Main"
 </Activity>`;
 
 describe("importUiPathBot", () => {
-  it("returns a storable bot with JSON-encoded process tree and source, plus a PAD report", () => {
+  it("returns a storable bot with JSON-encoded diagram, process tree and source, plus a PAD report", () => {
     const { bot, report } = importUiPathBot({ "Portal/Main.xaml": MAIN }, "Portal");
     expect(bot.name).toBe("Portal");
-    expect(bot.model).toBeUndefined();
+    expect(JSON.parse(bot.model!)).toContain('<bpmn2:process id="Process_1"');
     expect(Object.keys(JSON.parse(bot.processTree).nodeInfo)).toHaveLength(2);
     expect(JSON.parse(bot.source!).main).toBe("Main.xaml");
     expect(report.target).toBe("Power Automate Desktop");

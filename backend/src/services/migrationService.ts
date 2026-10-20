@@ -1,5 +1,6 @@
 import { buildMigrationReport, MigrationReport } from "../analysis/migrationReport";
 import { migrationTargets } from "../analysis/migrationTargets";
+import { generateBpmn } from "../bpmn/bpmnGenerator";
 import { importProject, UiPathProjectInfo } from "../importers/uipath/UiPathImporter";
 import IBotModel, { IProcessTree } from "../interfaces/BotModelInterface";
 
@@ -35,6 +36,8 @@ export function importUiPathBot(
     bot: {
       name: imported.name,
       description: imported.description,
+      // Stored like the modeler stores diagrams: the BPMN XML as a JSON string
+      model: JSON.stringify(generateBpmn(imported.processTree)),
       processTree: JSON.stringify(imported.processTree),
       source: JSON.stringify(imported.source),
     },
