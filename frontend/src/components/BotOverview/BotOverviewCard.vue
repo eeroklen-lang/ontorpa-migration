@@ -88,6 +88,12 @@
             </div>
           </div>
         </div>
+
+        <div class="tooltip tooltip-bottom" data-tip="Delete bot">
+          <div class="m-1 cursor-pointer" @click="deleteBot">
+            <FontAwesomeIcon :icon="faTrash" />
+          </div>
+        </div>
       </div>
     </div>
     <div v-else>
@@ -107,12 +113,15 @@ import { faBinoculars } from "@fortawesome/free-solid-svg-icons";
 import { faDownload } from "@fortawesome/free-solid-svg-icons";
 import { faRuler } from "@fortawesome/free-solid-svg-icons";
 import { faClipboardCheck } from "@fortawesome/free-solid-svg-icons";
+import { faTrash } from "@fortawesome/free-solid-svg-icons";
+import botModelApi from "../../api/botModelApi";
 
 // interface BotOverviewCardProps {
 //   botModel: Object as PropType<BotModel>;
 // }
 
 const props = defineProps<{ botModel: BotModel }>();
+const emit = defineEmits<{ (e: "deleted", botModelId: string): void }>();
 
 // Bots imported before diagrams were generated open in the migration report instead of the modeler
 const diagram = computed(() => !!props.botModel && hasDiagram(props.botModel));
@@ -130,6 +139,20 @@ async function downloadBot(targetRpaTool: string) {
     await downloadLinkedBot(props.botModel, targetRpaTool);
   } catch (e) {
     toast.error("Bot could not be linked to " + targetRpaTool + ".\n" + e);
+  }
+}
+
+async function deleteBot() {
+  const botModel = props.botModel;
+  if (!botModel?._id || !window.confirm(`Delete "${botModel.name}"? This cannot be undone.`)) {
+    return;
+  }
+  try {
+    await botModelApi.deleteBotModel(botModel._id);
+    toast.success(`Deleted "${botModel.name}".`);
+    emit("deleted", botModel._id);
+  } catch (e) {
+    toast.error("Bot could not be deleted.\n" + e);
   }
 }
 </script>

@@ -30,7 +30,9 @@
     </router-link>
     <BotOverviewCard
       v-for="botModel in filteredOperations"
+      :key="botModel._id"
       :botModel="botModel"
+      @deleted="removeBot"
     >
     </BotOverviewCard>
     <div v-if="searchTerm && filteredOperations.length === 0" class="m-4">
@@ -54,6 +56,9 @@ export default defineComponent({
   methods: {
     clearSearchTerm() {
       this.searchTerm = "";
+    },
+    removeBot(botModelId: string) {
+      this.botModels = this.botModels.filter((botModel) => botModel._id !== botModelId);
     },
   },
   computed: {
