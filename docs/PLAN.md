@@ -17,7 +17,8 @@ Tick boxes as work lands. Paths are relative to the repo root (`backend/…`, `f
 | M1: UiPath import (#1) | Done |
 | M2: Mapping + readiness report (#2) | Done (target coverage follows with M3) |
 | M3: PAD skeleton exporter | Done (Robin names not yet validated in PAD) |
-| M4: API + UI integration | Done (BPMN generator stretch open) |
+| M4: API + UI integration | Done |
+| M5: Diagrams and migration workbench | Done |
 | Verification | In progress (real bots, UI click-through, PAD on Windows) |
 
 ## Context
@@ -154,21 +155,55 @@ Front end:
   - [x] `parseBotModel` accepts bots without a diagram and fills in the missing `dataResourceInfo` / `transientDataInfo`
   - [x] `getOperationBranch` (`ontologyParser.ts`) returns a short branch for unmapped steps and context containers instead of throwing
   - [x] `abstractionContextAnalysis.ts` accepts unknown concepts and a first step without software context
-  - [ ] `BpmnModdleParser.ts` still throws on elements without an operation; only matters once imported bots get a diagram (stretch below)
+  - [x] `BpmnModdleParser.ts` threw on elements without an operation; fixed in M5
   - Checked: the front end's metrics calculator and abstractor run on imported templates; the metrics page shows the metrics of an imported bot (no diagram)
 - [x] Loops in the modeler: the properties panel offers the loop operations (and any other `CompoundActivity` operation) for sub-processes, next to the context containers. A loop marker is not drawn yet
 - Checked with headless Chrome screenshots against the running dev servers: overview, import page, report page (all-mapped bot and a bot with unmapped and manual steps), metrics page
 - `npm run build` in `frontend/` still fails on the 89 type errors that were there before; the changes add none (88 now)
-- [ ] Stretch: `backend/src/importers/bpmnGenerator.ts`, process tree → BPMN XML with simple auto-layout and `rpa:operation` attributes, so imported bots open in the modeler and abstraction views (reuses the existing metrics for issue #10 later)
+- [x] Stretch: process tree → BPMN XML with auto-layout and `rpa:operation` attributes, so imported bots open in the modeler and abstraction views; done in M5 (`backend/src/bpmn/`)
+
+## M5: Diagrams and migration workbench
+
+Imported bots get a BPMN diagram, and the modeler becomes the place where a migration is finished: unmapped, manual and PAD-less steps are resolved in the diagram before export, and the report keeps what the importer did on its own apart from what a person fixed (the thesis's measure of how much the ontology covers automatically).
+
+Decisions (2026-10-20): imported bots are editable, and saving keeps their UiPath info; scopes, containers and loops are drawn expanded inline (OntoRPA's context-container notation); each step remembers its import result. Left for later: ontology gap proposals, a portfolio page (#11), Try/Catch modeling (#6), variables and config as data objects (#7), a live PAD preview of the whole flow, a re-layout button.
+
+Back end:
+- [x] `backend/src/bpmn/bpmnLayout.ts` + `bpmnGenerator.ts`: `generateBpmn(processTree)` → BPMN XML (xmlbuilder2)
+  - Element ids are the process tree ids, steps carry `rpa:operation`, the process is `Process_1`: the abstraction view finds elements by tree id, and the linkers' id conventions (`Gateway`, `Loop`) survive a save
+  - Gateways get a join `<id>_join` and `gatewayDirection` (Diverging / Converging), so the parser tells a split from its join; a gateway without branches gets one empty branch
+  - Sub-processes are expanded, with their own start and end events; `ForEachLoop` gets a sequential multi-instance marker, `ConditionalLoop` and imported `Loop_*` a standard loop marker
+  - Layout: measured, then placed, left to right; the first branch stays on the main line, the others stack below with orthogonal flows; gateway labels above, with room reserved
+- [x] The import stores the diagram (`model`, as the modeler does: the XML as a JSON string) and the report at import (`importReport`); each node keeps the importer's result as `imported: {concept, mappingStatus}`
+- [x] The report of a stored imported bot has a `review`: coverage at import, resolved steps (mapped, corrected, unmapped), removed and added steps (`buildReview` in `migrationReport.ts`)
+- [x] `GET /api/migrationTargets` (operations each target generates) and `POST /api/migrationTargets/pad/preview` (PAD lines of one step, from the linker's `padStepLines`)
+- [x] CLI: `--out` also writes `<bot>.bpmn`, which opens in bpmn.io or Camunda Modeler
+- Backend dev server note: ts-node-dev does not watch type-only files (`BotModelInterface.ts`), so after changing one, restart `npm run dev`
+
+Front end:
+- [x] `BpmnModdleParser.ts`: nested splits of the same type (an If in an If) no longer end a branch; sub-processes without an operation keep their id; steps without an operation are kept with concept `""`; errors are `ProcessStructureError`s naming the element; `findStructureProblems` lists steps not reached from the start event and steps with several outgoing flows
+- [x] Saving an imported bot keeps its UiPath info (`mergeProcessTree` in `frontend/src/utils/migrationStatus.ts`): with an operation a step is mapped, without one it falls back to manual or structural if it was imported so, otherwise unmapped
+- [x] Fixed: `stringifyBotModel` left `source` as an object (saving an imported bot failed) and changed the bot in place
+- [x] Status colours in the diagram (canvas markers, never saved): red unmapped, amber manual, blue mapped but no PAD action
+- [x] `MigrationChecklist.vue`: live step count and coverage (counted like the report), open steps and diagram problems; clicking one selects the element
+- [x] Properties panel: the step's UiPath source and import status, its PAD lines, and the operation list with the step's application first and PAD actions marked
+- [x] Overview opens bots with a diagram in the modeler; the report links to the modeler and shows coverage at import and the resolved steps
+- [x] Fixed: the metrics page broke on ratios over nothing (NaN), e.g. data resource access in a bot without data resources
+- Bots imported before M5 have no diagram: re-import them
+
+Checked with headless Chrome (DevTools protocol) against the dev servers, on imported templates: diagrams and colours in the modeler (TransactionalProcess, SaveOutlookAttachments, EnterExcelDataIntoWebsite); checklist numbers equal the report; correcting an operation (PAD 50 % → 100 %) and removing the manual Flowchart loop-back step, then saving, gives the expected review and PAD export; a loose task is listed; the inspector shows source and PAD lines; abstraction and metrics pages show the diagram, and abstraction aggregates the generated steps
 
 ## Verification
 
-- [x] `npm test` in `backend/` passes (182 tests), with unit tests for:
+- [x] `npm test` in `backend/` passes (252 tests), with unit tests for:
   - [x] `xamlReader` (property-element traversal)
   - [x] `UiPathImporter` (each construct produces the expected tree; REFramework detected; Invoke inlined; cycle guard)
   - [x] `migrationReport` (counts and coverage on inline test bots; the fixture bots are still to come, see M0)
   - [x] PAD linker (exact output per construct; no throw on unmapped or unknown nodes; balanced IF/LOOP/SWITCH blocks on every template)
   - [x] every ontology id in `uipathActivityMapping` and `padMapping` exists in `rpa-operations.json`
+  - [x] BPMN generator (types, operations, loop markers; every element drawn, no overlaps, flows between their nodes; every template)
+  - [x] contract tests against the front end's code (`backend/test/contract/`): generated diagrams read back by `BpmnModdleParser` give the same tree (every template); parser structure errors; `mergeProcessTree`; `countSteps` equals the report; checklist classification
+  - [x] review in the report, target endpoints, `padStepLines` matching the linker
 - [ ] `npm run import:uipath samples/*`: each real sample imports without errors, and the portfolio table looks plausible against a manual read of one bot
   - Done for the 11 template bots (`samples/uipath-studio-templates/`); still needs the real client bots
 - [ ] End to end: start Mongo (`docker compose up -d`), run back end and front end with `npm run dev`, import a sample at `/import`, open its report, download the PAD export
