@@ -13,7 +13,6 @@ import {
   ProcessTree,
   ProcessTreeStructure,
 } from "../interfaces/BotModel";
-import YAML from "yaml";
 
 /** A problem with the structure of a diagram, pointing at the element at fault if there is one. */
 export interface ProcessStructureProblem {
@@ -46,9 +45,8 @@ class BpmnModdleParser {
     const process: Process = bpmnModdle.rootElements[0] as Process;
     const parsedProcess = this.parseProcess(process)[0];
 
-    console.log(this.processTreeNodes);
-    //console.log(JSON.stringify(parsedProcess));
-    console.log(YAML.stringify(parsedProcess));
+    // The modeler parses on every edit for its migration checklist, so nothing is logged here
+    // console.log(YAML.stringify(parsedProcess));
 
     const generatedProcessTree: ProcessTree = {
       tree: parsedProcess,
@@ -362,7 +360,7 @@ export function findStructureProblems(
 }
 
 /** A gateway that joins branches: marked as converging, or unmarked with one outgoing flow. */
-function isJoin(gateway: FlowNode): boolean {
+export function isJoin(gateway: FlowNode): boolean {
   const direction = (gateway as Gateway).gatewayDirection;
   if (direction === "Converging") {
     return true;

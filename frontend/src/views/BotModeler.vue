@@ -33,7 +33,7 @@
         />
       </div>
     </div>
-    <div class="flex-auto grid grid-cols-6">
+    <div class="flex-auto grid grid-cols-6 min-h-0">
       <BotOperationSidebar
         @drag-operation="dragOperation"
         @click-operation="clickOperation"
@@ -48,16 +48,23 @@
         @modeler-element-changed="elementChanged"
         class="col-span-4"
       ></BotModelerCanvas>
-      <div class="col-span-1 drop-shadow-lg bg-white">
+      <div class="col-span-1 drop-shadow-lg bg-white overflow-y-auto">
         <BotModelerPropertiesPanel
           v-if="modelerShown"
           :modeler="modeler"
           :element="element"
-          class="h-128"
         ></BotModelerPropertiesPanel>
-        <div class="m-4 text-left">
+        <MigrationChecklist
+          v-if="modelerShown"
+          :items="checklist"
+          :counts="counts"
+          :target-name="target?.name"
+          @show-element="showElement"
+        ></MigrationChecklist>
+        <details class="m-4 text-left">
+          <summary class="cursor-pointer text-sm opacity-70">Process tree</summary>
           <pre>{{ stringifiedProcessTree }}</pre>
-        </div>
+        </details>
       </div>
     </div>
   </div>
@@ -75,16 +82,29 @@ import {
 import BotOperationSidebar from "../components/BotModeler/BotOperationSidebar.vue";
 import { bpmnMapping } from "../utils/bpmnMapping";
 import { BpmoConcept } from "../interfaces/bpmoConcepts";
+import MigrationChecklist from "../components/BotModeler/MigrationChecklist.vue";
 import BpmnModdleParser, {
   findStructureProblems,
   ProcessStructureError,
+  ProcessStructureProblem,
 } from "../utils/BpmnModdleParser";
-import { mergeProcessTree } from "../utils/migrationStatus";
+import {
+  countSteps,
+  mergeProcessTree,
+  StepClass,
+  StepCounts,
+} from "../utils/migrationStatus";
+import {
+  checklistItems,
+  ChecklistItem,
+  diagramSteps,
+  DiagramStep,
+} from "../utils/migrationChecklist";
 import BotModel, {
   createDefaultBotModel,
   ProcessTree,
 } from "../interfaces/BotModel";
-import botModelApi from "../api/botModelApi";
+import botModelApi, { MigrationTarget } from "../api/botModelApi";
 import YAML from "yaml";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
@@ -103,6 +123,15 @@ const selectedElements = ref([] as ModelerElement[]);
 const element = ref({} as ModelerElement | null);
 const botModel = ref({} as BotModel);
 
+// Migration status of the diagram as it is being edited, for the checklist and step markers
+const target = ref<MigrationTarget>();
+const targetOperations = computed(() =>
+  target.value ? new Set(target.value.operations) : undefined
+);
+const counts = ref<StepCounts>();
+const checklist = ref<ChecklistItem[]>([]);
+let migrationStateTimer: ReturnType<typeof setTimeout> | undefined;
+
 onMounted(async () => {
   if (route.params.modelId as string) {
     try {
@@ -114,6 +143,15 @@ onMounted(async () => {
     }
   } else {
     botModel.value = createDefaultBotModel();
+  }
+});
+
+onMounted(async () => {
+  try {
+    target.value = (await botModelApi.getMigrationTargets()).pad;
+    updateMigrationState();
+  } catch (e) {
+    // The checklist works without target coverage
   }
 });
 
@@ -140,6 +178,62 @@ function elementChanged(e: ModelerEvent) {
 function modelerLoaded(loadedModeler): void {
   modeler.value = loadedModeler;
   modelerShown.value = true;
+  modeler.value.on("commandStack.changed", () => {
+    clearTimeout(migrationStateTimer);
+    migrationStateTimer = setTimeout(updateMigrationState, 300);
+  });
+  updateMigrationState();
+}
+
+const MARKERS: Partial<Record<StepClass, string>> = {
+  unmapped: "migration-unmapped",
+  manual: "migration-manual",
+  ontologyOnly: "migration-ontology-only",
+};
+
+/** Marks steps by migration status and updates the checklist from the current diagram. */
+function updateMigrationState() {
+  if (!modelerShown.value) {
+    return;
+  }
+  const elementRegistry = modeler.value.get("elementRegistry");
+  const steps = diagramSteps(
+    elementRegistry.getAll(),
+    botModel.value.processTree?.nodeInfo || {},
+    targetOperations.value
+  );
+  markSteps(steps);
+
+  let problems: ProcessStructureProblem[];
+  try {
+    const processTree = mergeProcessTree(
+      botModel.value.processTree,
+      new BpmnModdleParser().parseBpmnModdle(modeler.value._definitions)
+    );
+    counts.value = countSteps(processTree.nodeInfo, targetOperations.value);
+    problems = findStructureProblems(modeler.value._definitions, processTree);
+  } catch (e) {
+    problems = [
+      e instanceof ProcessStructureError
+        ? e
+        : { message: `The diagram cannot be read as a bot: ${e}` },
+    ];
+  }
+  checklist.value = checklistItems(steps, problems, target.value?.name);
+}
+
+function markSteps(steps: DiagramStep[]) {
+  const canvas = modeler.value.get("canvas");
+  const elementRegistry = modeler.value.get("elementRegistry");
+  for (const element of elementRegistry.getAll()) {
+    Object.values(MARKERS).forEach((marker) => canvas.removeMarker(element, marker));
+  }
+  for (const step of steps) {
+    const marker = MARKERS[step.stepClass];
+    if (marker) {
+      canvas.addMarker(step.id, marker);
+    }
+  }
 }
 
 async function saveBot() {
@@ -186,6 +280,7 @@ async function saveBot() {
       });
     }
     toast.success("Model successfully saved.");
+    updateMigrationState();
   } catch (e) {
     toast.error("Bot could not be saved.\n" + e);
   }

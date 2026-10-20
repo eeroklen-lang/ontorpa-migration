@@ -1,7 +1,6 @@
 // Contract tests run the front end's BPMN parser on diagrams the back end generates, so that a
 // generated diagram survives being opened and saved in the modeler.
 import BpmnModdle from "bpmn-moddle";
-import { vi } from "vitest";
 import BpmnModdleParser, {
   findStructureProblems,
   ProcessStructureProblem,
@@ -31,16 +30,10 @@ export async function parseDiagram(
   xml: string
 ): Promise<{ definitions: any; processTree: IProcessTree; problems: ProcessStructureProblem[] }> {
   const definitions = await readDiagram(xml);
-  // The parser logs every tree it parses
-  const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
-  try {
-    const processTree = new BpmnModdleParser().parseBpmnModdle(definitions);
-    return {
-      definitions,
-      processTree: { tree: processTree.tree, nodeInfo: processTree.nodeInfo } as IProcessTree,
-      problems: findStructureProblems(definitions, processTree),
-    };
-  } finally {
-    log.mockRestore();
-  }
+  const processTree = new BpmnModdleParser().parseBpmnModdle(definitions);
+  return {
+    definitions,
+    processTree: { tree: processTree.tree, nodeInfo: processTree.nodeInfo } as IProcessTree,
+    problems: findStructureProblems(definitions, processTree),
+  };
 }
