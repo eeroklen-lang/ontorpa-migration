@@ -1,8 +1,8 @@
 import {
-  Activity,
   Definitions,
   FlowElement,
   FlowNode,
+  Gateway,
   ItemAwareElement,
   Process,
   SequenceFlow,
@@ -14,6 +14,23 @@ import {
   ProcessTreeStructure,
 } from "../interfaces/BotModel";
 import YAML from "yaml";
+
+/** A problem with the structure of a diagram, pointing at the element at fault if there is one. */
+export interface ProcessStructureProblem {
+  message: string;
+  elementId?: string;
+}
+
+/** Thrown when a diagram cannot be read as a block-structured process. */
+export class ProcessStructureError extends Error implements ProcessStructureProblem {
+  elementId?: string;
+
+  constructor(message: string, elementId?: string) {
+    super(message);
+    this.name = "ProcessStructureError";
+    this.elementId = elementId;
+  }
+}
 
 class BpmnModdleParser {
   processTreeNodes: Record<string, ProcessTreeNodeInfo> = {};
@@ -57,9 +74,15 @@ class BpmnModdleParser {
   ): [ProcessTreeStructure, FlowNode | undefined] {
     const startFlow = BpmnModdleParser.getStartFlowOfProcess(process);
     const processTree: ProcessTreeStructure = {};
+    const isSubProcess = process.$type === "bpmn:SubProcess";
 
     if (!startFlow || !startFlow.targetRef) {
-      throw new Error("Startevent is not connected to flow!");
+      throw new ProcessStructureError(
+        isSubProcess
+          ? `${describe(process)} has no start event connected to its flow.`
+          : "The start event is not connected to the flow.",
+        isSubProcess ? process.id : undefined
+      );
     }
 
     const [treePart, lastElement] = this.parseProcessFlowUntilElement(
@@ -67,7 +90,8 @@ class BpmnModdleParser {
       "bpmn:EndEvent"
     );
 
-    if (process.$attrs && "rpa:operation" in process.$attrs) {
+    // Sub-processes without an operation (e.g. imported scopes) are steps too
+    if (isSubProcess) {
       processTree[process.id] = treePart;
       this.addProcessNodeInfo(process);
     } else {
@@ -82,7 +106,8 @@ class BpmnModdleParser {
    * Parses a process flow until a certain modeling element is observed.
    *
    * @param startElement - The modeling element in which the flow to parse starts
-   * @param TerminationElementType - The modeling element where to stop parsing
+   * @param TerminationElementType - The modeling element where to stop parsing; for a gateway
+   * type, only a join of that type stops it, so nested splits of the same type are parsed
    * @returns [ProcessTree, last element in flow]
    */
   private parseProcessFlowUntilElement(
@@ -96,11 +121,11 @@ class BpmnModdleParser {
 
     const parsedProcess: (string | ProcessTreeStructure)[] = [];
     let nextElementInFlow: FlowNode | undefined = startElement;
+    const isTermination = (element: FlowNode) =>
+      element.$type === TerminationElementType &&
+      (TerminationElementType === "bpmn:EndEvent" || isJoin(element));
 
-    while (
-      nextElementInFlow &&
-      nextElementInFlow.$type !== TerminationElementType
-    ) {
+    while (nextElementInFlow && !isTermination(nextElementInFlow)) {
       const [treePart, lastElement] =
         this.parseProcessSegment(nextElementInFlow);
       parsedProcess.push(treePart);
@@ -134,6 +159,12 @@ class BpmnModdleParser {
         return [currentElement.id, currentElement];
       case "bpmn:ParallelGateway":
       case "bpmn:ExclusiveGateway":
+        if (isJoin(currentElement)) {
+          throw new ProcessStructureError(
+            `${describe(currentElement)} joins branches that no gateway of the same type splits.`,
+            currentElement.id
+          );
+        }
         return this.parseSplittedControlflow(currentElement);
       case "bpmn:SubProcess":
         return this.parseProcess(currentElement as SubProcess);
@@ -181,7 +212,10 @@ class BpmnModdleParser {
         (element) => element.id === lastElementsOfBranches[0].id
       )
     ) {
-      throw new Error("Something is wrong with the structure of your diagram!");
+      throw new ProcessStructureError(
+        `The branches of ${describe(gatewayElement)} end at different gateways.`,
+        gatewayElement.id
+      );
     }
 
     const gatewayId = gatewayElement.id;
@@ -194,15 +228,11 @@ class BpmnModdleParser {
   }
 
   private addProcessNodeInfo(element: FlowNode): void {
-    if (!element.$attrs || !("rpa:operation" in element.$attrs)) {
-      throw new Error(
-        "Not all elements are correctly configured with an RPA operation."
-      );
-    }
-
+    // Elements without an operation are kept as unmapped steps (concept ""), e.g. imported
+    // activities that no ontology operation fits yet
     const nodeInfo: ProcessTreeNodeInfo = {
       label: element.name || element.id,
-      concept: element.$attrs["rpa:operation"],
+      concept: element.$attrs?.["rpa:operation"] || "",
     };
 
     // Look for data associations
@@ -288,6 +318,71 @@ class BpmnModdleParser {
   private static elementToString(element: FlowNode): string {
     return element.name || element.id + " (" + element.$type + ")";
   }
+}
+
+/**
+ * Finds the parts of a diagram that its process tree leaves out: steps not reached from the
+ * start event, and steps with several outgoing flows, of which only the first is followed.
+ *
+ * @param bpmnModdle - Definitions object of a bpmn-js modeler
+ * @param processTree - The process tree parsed from it
+ */
+export function findStructureProblems(
+  bpmnModdle: Definitions,
+  processTree: ProcessTree
+): ProcessStructureProblem[] {
+  const problems: ProcessStructureProblem[] = [];
+
+  const visit = (container: Process | SubProcess) => {
+    container.flowElements.forEach((element) => {
+      const isStep =
+        element.$type === "bpmn:Task" || element.$type === "bpmn:SubProcess";
+      if (isStep && !(element.id in processTree.nodeInfo)) {
+        problems.push({
+          message: `${describe(element)} is not reached from the start event, so the bot leaves it out.`,
+          elementId: element.id,
+        });
+        return;
+      }
+      const outgoing = (element as FlowNode).outgoing || [];
+      if (!element.$type.endsWith("Gateway") && outgoing.length > 1) {
+        problems.push({
+          message: `${describe(element)} has ${outgoing.length} outgoing flows, but only the first is followed. Use a gateway to branch.`,
+          elementId: element.id,
+        });
+      }
+      if (element.$type === "bpmn:SubProcess") {
+        visit(element as SubProcess);
+      }
+    });
+  };
+  visit(bpmnModdle.rootElements[0] as Process);
+
+  return problems;
+}
+
+/** A gateway that joins branches: marked as converging, or unmarked with one outgoing flow. */
+function isJoin(gateway: FlowNode): boolean {
+  const direction = (gateway as Gateway).gatewayDirection;
+  if (direction === "Converging") {
+    return true;
+  }
+  if (direction === "Diverging") {
+    return false;
+  }
+  return (gateway.outgoing || []).length <= 1;
+}
+
+/** Names an element for a message, e.g. Gateway "Invoice found?" */
+function describe(element: { $type: string; id: string; name?: string }): string {
+  const kind = element.$type.endsWith("Gateway")
+    ? "Gateway"
+    : element.$type === "bpmn:SubProcess"
+    ? "Sub-process"
+    : element.$type === "bpmn:Task"
+    ? "Step"
+    : "Element";
+  return element.name ? `${kind} "${element.name}"` : `${kind} ${element.id}`;
 }
 
 export default BpmnModdleParser;
