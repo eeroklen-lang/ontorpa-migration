@@ -357,6 +357,21 @@ class UiPathImporter {
           ]),
         ];
 
+      // Check App State decides on whether a UI element appears; without steps in either
+      // branch it only checks or waits, and is mapped as a leaf
+      case "NCheckState": {
+        const branches = [node.slots.IfExists || [], node.slots.IfNotExists || []];
+        if (branches.some(hasSteps)) {
+          const condition: XamlExpression = { text: "the target UI element appears", language: "Literal" };
+          return [
+            this.gateway("BinaryDecision", node, scope, condition, () =>
+              branches.map((branch) => this.convertActivities(branch, scope))
+            ),
+          ];
+        }
+        break;
+      }
+
       case "Switch":
         return [
           this.gateway(
@@ -777,6 +792,13 @@ function isActivity(node: XamlNode): boolean {
   );
 }
 
+/** Whether the nodes contain an activity other than (empty) sequences and activity actions. */
+function hasSteps(nodes: XamlNode[]): boolean {
+  return nodes.some((n) =>
+    n.name === "Sequence" || n.name === "ActivityAction" ? hasSteps(n.children) : isActivity(n)
+  );
+}
+
 /** Activities nested in an activity's body: Body/ActivityBody slots (unwrapping ActivityAction) and content children. */
 function bodyOf(node: XamlNode): XamlNode[] {
   const fromSlots = ["Body", "ActivityBody", "Action"]
@@ -807,7 +829,7 @@ function expressionOf(node: XamlNode): XamlExpression | undefined {
 }
 
 function targetOf(node: XamlNode): XamlExpression | undefined {
-  for (const property of ["Url", "WorkbookPath", "FileName", "FilePath", "Path", "SheetName"]) {
+  for (const property of ["Url", "WorkbookPath", "FileName", "FilePath", "Path", "SheetName", "ProcessName"]) {
     const argument = getArgument(node, property);
     if (argument) {
       return argument;

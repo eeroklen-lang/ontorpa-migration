@@ -19,9 +19,9 @@ function report(body: string) {
 
 describe("buildGapReport", () => {
   // 4 steps: 2 mapped (1 with a PAD action), 1 unmapped, 1 manual
-  const first = report(`<ui:NavigateTo /><Assign /><ui:KillProcess /><ui:InvokeCode />`);
+  const first = report(`<ui:NavigateTo /><Assign /><ui:Beep /><ui:InvokeCode />`);
   // 2 steps: 1 unmapped, 1 manual
-  const second = report(`<ui:KillProcess /><ui:InvokeCode />`);
+  const second = report(`<ui:Beep /><ui:InvokeCode />`);
   // No steps
   const empty = report(`<ui:LogMessage />`);
   const gaps = buildGapReport([first, second, empty]);
@@ -37,7 +37,7 @@ describe("buildGapReport", () => {
 
   it("lists unmapped activities with occurrences, bots and projected gain", () => {
     expect(gaps.unmapped).toEqual([
-      { name: "KillProcess", occurrences: 2, contexts: { "": 2 }, bots: 2, gain: 2 / 6 },
+      { name: "Beep", occurrences: 2, contexts: { "": 2 }, bots: 2, gain: 2 / 6 },
     ]);
   });
 

@@ -13,7 +13,7 @@ const MAIN = `<Activity x:Class="Main"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Sequence>
     <ui:NavigateTo DisplayName="Open portal" />
-    <ui:KillProcess DisplayName="Stop app" />
+    <ui:Beep DisplayName="Beep" />
   </Sequence>
 </Activity>`;
 
@@ -58,11 +58,11 @@ describe("migrationReportFor", () => {
   it("compares a stored bot with its import", () => {
     const processTree = JSON.parse(bot.processTree);
     const unmapped = Object.keys(processTree.nodeInfo).find((id) => !processTree.nodeInfo[id].concept)!;
-    Object.assign(processTree.nodeInfo[unmapped], { concept: "KillProcess", mappingStatus: "mapped" });
+    Object.assign(processTree.nodeInfo[unmapped], { concept: "ShowMessage", mappingStatus: "mapped" });
     const report = migrationReportFor({ ...bot, processTree: JSON.stringify(processTree) });
     expect(report.coverage.ontology).toBe(1);
     expect(report.review?.atImport.coverage.ontology).toBe(0.5);
-    expect(report.review?.resolved).toMatchObject([{ label: "Stop app", kind: "mapped" }]);
+    expect(report.review?.resolved).toMatchObject([{ label: "Beep", kind: "mapped" }]);
   });
 
   it("reports ontology coverage only for target 'none'", () => {

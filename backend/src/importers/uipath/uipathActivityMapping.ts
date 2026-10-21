@@ -46,6 +46,15 @@ const ui = (operations: Partial<Record<AppContext, string>>): Rule => {
 };
 const uiRules = new Set<Rule>();
 
+/**
+ * Desktop applications and SAP GUI share the software-independent human-interface operations;
+ * the application stays in the step's source context.
+ */
+const onDesktop = (operation: string): Partial<Record<AppContext, string>> => ({
+  desktop: operation,
+  sap: operation,
+});
+
 /** An API activity whose ontology operation depends on the application scope it runs in. */
 const api =
   (operations: Partial<Record<AppContext, string>>): Rule =>
@@ -58,13 +67,13 @@ const api =
  */
 const activityRules: Record<string, Rule> = {
   // UI automation, modern (uix) and classic (ui)
-  NClick: ui({ browser: "BrowserClickButton" }),
-  Click: ui({ browser: "BrowserClickButton" }),
-  NTypeInto: ui({ browser: "BrowserInputText" }),
-  TypeInto: ui({ browser: "BrowserInputText" }),
-  TypeSecureText: ui({ browser: "BrowserInputText" }),
-  SetText: ui({ browser: "BrowserInputText" }),
-  NSetText: ui({ browser: "BrowserInputText" }),
+  NClick: ui({ browser: "BrowserClickButton", ...onDesktop("ClickElement") }),
+  Click: ui({ browser: "BrowserClickButton", ...onDesktop("ClickElement") }),
+  NTypeInto: ui({ browser: "BrowserInputText", ...onDesktop("TypeIntoElement") }),
+  TypeInto: ui({ browser: "BrowserInputText", ...onDesktop("TypeIntoElement") }),
+  TypeSecureText: ui({ browser: "BrowserInputText", ...onDesktop("TypeIntoElement") }),
+  SetText: ui({ browser: "BrowserInputText", ...onDesktop("TypeIntoElement") }),
+  NSetText: ui({ browser: "BrowserInputText", ...onDesktop("TypeIntoElement") }),
   NGetText: ui({ browser: "BrowserGetText" }),
   GetValue: ui({ browser: "BrowserGetText" }),
   GetFullText: ui({ browser: "BrowserGetText" }),
@@ -83,6 +92,16 @@ const activityRules: Record<string, Rule> = {
   NCloseTab: mapped("BrowserClose"),
   CloseApplication: ui({ browser: "BrowserClose" }),
   CloseWindow: ui({ browser: "BrowserClose" }),
+  // Keys, element checks and windows work the same in any application
+  SendHotkey: mapped("PressKeys"),
+  NKeyboardShortcuts: mapped("PressKeys"),
+  UiElementExists: mapped("CheckElement"),
+  ElementExists: mapped("CheckElement"),
+  WaitUiElementAppear: mapped("CheckElement"),
+  NCheckState: mapped("CheckElement"),
+  MaximizeWindow: mapped("MaximizeWindow"),
+  NExtractData: ui({ browser: "BrowserExtractTable" }),
+  ExtractData: ui({ browser: "BrowserExtractTable" }),
 
   // Excel, modern (…X) and classic
   ReadCellValueX: mapped("ExcelReadCellValue"),
@@ -119,15 +138,49 @@ const activityRules: Record<string, Rule> = {
   DeleteMailX: api({ outlook: "OutlookDeleteEmail" }),
   SaveMailAttachmentsX: api({ outlook: "OutlookSaveAttachments" }),
 
-  // Files
+  // Mail over SMTP
+  SendMail: mapped("SmtpSendEmail"),
+
+  // Files and folders
   AppendLine: mapped("AppendPlainText"),
   WriteTextFile: mapped("CreateTextFile"),
   DeleteFileX: mapped("DeleteFile"),
   Delete: mapped("DeleteFile"),
+  ReadTextFile: mapped("ReadTextFile"),
+  ReadCsvFile: mapped("ReadCsvFile"),
+  CopyFile: mapped("CopyFile"),
+  CreateDirectory: mapped("CreateFolder"),
+  PathExists: mapped("PathExists"),
+  FileExistsX: mapped("PathExists"),
+  FolderExistsX: mapped("PathExists"),
 
-  // Variables
+  // Variables, data tables, collections, text and JSON
   Assign: mapped("SetVariable"),
   MultipleAssign: mapped("SetVariable"),
+  BuildDataTable: mapped("TableCreate"),
+  AddDataRow: mapped("TableAddRow"),
+  AddDataColumn: mapped("TableAddColumn"),
+  FilterDataTable: mapped("TableFilter"),
+  LookupDataTable: mapped("TableLookup"),
+  GetRowItem: mapped("TableGetRowItem"),
+  ClearDataTable: mapped("TableClear"),
+  AddToCollection: mapped("ListAddItem"),
+  Replace: mapped("StringReplace"),
+  DeserializeJson: mapped("JsonParse"),
+  DeserializeJsonArray: mapped("JsonParse"),
+
+  // Databases and web services
+  DatabaseConnect: mapped("DatabaseConnect"),
+  ExecuteQuery: mapped("DatabaseRunQuery"),
+  HttpClient: mapped("HttpRequest"),
+
+  // System: waiting, processes, dialogs for attended bots, leaving a loop
+  Delay: mapped("Wait"),
+  StartProcess: mapped("StartProcess"),
+  KillProcess: mapped("KillProcess"),
+  MessageBox: mapped("ShowMessage"),
+  InputDialog: mapped("AskForInput"),
+  Break: mapped("ExitLoop"),
 
   // Logging and comments carry no behaviour to migrate
   LogMessage: ignore,

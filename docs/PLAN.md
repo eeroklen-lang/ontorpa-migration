@@ -20,7 +20,7 @@ Tick boxes as work lands. Paths are relative to the repo root (`backend/…`, `f
 | M3: PAD skeleton exporter | Done (Robin names not yet validated in PAD) |
 | M4: API + UI integration | Done |
 | M5: Diagrams and migration workbench | Done |
-| M6: Growing the mapping rate | In progress (rounds 0 and 1a done; round 2 next) |
+| M6: Growing the mapping rate | In progress (rounds 0, 1a and 2 done; PAD names and eval set next) |
 | Verification | In progress (real bots, UI click-through, PAD on Windows) |
 
 ## Context
@@ -215,8 +215,13 @@ Decisions (2026-10-21):
   - [x] Robustness over every bot in `samples/` (`backend/test/samples.ts`). This found and fixed the REFramework import, which lost business workflows that were renamed or invoked from extra states
   - [x] Baseline: 68.4 % pooled on the dev set
 - [x] Round 1a: importer and mapping-table wins, without ontology changes. UI context from the activity's own selector, aliases onto existing operations, more scopes, `Highlight` ignored. 71.5 % pooled on the dev set. The PAD export flags actions on an application instance (`%Browser%`, …) that nothing launches
-- [ ] Round 2: ontology extensions and PAD actions for the 35 activity types over the threshold (DataTable, files and folders, desktop UI, wait and element exists, processes, dialogs, HTTP/JSON, SMTP, Break), documented in [`ontology-extensions.md`](ontology-extensions.md)
-- [ ] `npm run pad:catalog`: one Robin flow with every PAD template, to paste into PAD
+- [x] Round 2: 31 operations in 14 new classes for the 35 activity types over the threshold, documented in [`ontology-extensions.md`](ontology-extensions.md):
+  - desktop UI as software-independent human-interface operations, reused for SAP
+  - data tables, files and folders, processes, databases, HTTP, SMTP, waiting, Break and dialogs
+
+  PAD actions for 19 of them. Check App State with branches is a decision, and its branch steps are no longer lost. Dev set: 87.8 % pooled ontology coverage, 80.7 % PAD coverage
+- [x] `npm run pad:catalog` (`backend/src/cli/padCatalog.ts`): one Robin flow with every PAD action
+- [ ] Paste the catalog into PAD on Windows and fix the names PAD rejects. Copy the Robin of the 12 ontology-only round 2 operations from the designer (listed in `padMapping.ts`)
 - [ ] Eval set: copy the client bots into `samples/client/` and measure rounds 0, 1a and 2
 
 ## Verification

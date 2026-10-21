@@ -5,9 +5,12 @@ import { IProcessTreeNodeSource } from "../../interfaces/BotModelInterface";
  * PAD uses when actions are copied out of or pasted into the flow designer.
  *
  * The action names follow PAD's Robin as copied from the designer, but they have not yet been
- * validated by pasting into PAD (see "Verification" in docs/PLAN.md). Operations without a
- * confident PAD equivalent are left out on purpose: the linker emits a TODO comment for them,
- * and the migration report counts them as "ontology-only".
+ * validated by pasting into PAD (`npm run pad:catalog`, see M6 in docs/PLAN.md). Operations
+ * without a confident PAD equivalent are left out on purpose: the linker emits a TODO comment
+ * for them, and the migration report counts them as "ontology-only". PAD has native actions for
+ * some of them, whose Robin still has to be copied from the designer: CheckElement (wait for or
+ * check a UI element), MaximizeWindow, BrowserExtractTable, the data table operations other than
+ * TableGetRowItem, PathExists (If file/folder exists), HttpRequest and SmtpSendEmail.
  */
 
 /** What a template gets to fill in its parameters. */
@@ -205,6 +208,28 @@ const padActions: Record<string, PadTemplate> = {
       `Outlook.SendEmailThroughOutlook.SendEmail Instance: OutlookInstance Account: ${text("TODO")} SendTo: ${text("TODO")} Subject: ${text("TODO")} Body: ${text("TODO")} IsBodyHtml: False IsDraft: False`
     ),
 
+  // Desktop applications and SAP, through PAD's UI automation
+  ClickElement: (step) =>
+    withHints(
+      step,
+      [ELEMENT_HINT],
+      `UIAutomation.Click Element: ${UI_ELEMENT} ClickType: UIAutomation.ClickType.LeftClick MousePositionRelativeToElement: UIAutomation.RectangleEdgePoint.MiddleCenter OffsetX: 0 OffsetY: 0`
+    ),
+  TypeIntoElement: (step) => {
+    const value = valueOf(step);
+    return withHints(
+      step,
+      [ELEMENT_HINT, ...value.hints],
+      `UIAutomation.PopulateTextField TextField: ${UI_ELEMENT} Text: ${value.value} Mode: UIAutomation.PopulateTextMode.Replace ClickType: UIAutomation.PopulateMouseClickType.SingleClick`
+    );
+  },
+  PressKeys: (step) =>
+    withHints(
+      step,
+      ["set the keys, e.g. {Control}({C})"],
+      `MouseAndKeyboard.SendKeys.FocusAndSendKeys TextToSend: ${text("TODO")} DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: False`
+    ),
+
   // Files and text
   CreateTextFile: (step) => {
     const path = targetOf(step, "file path");
@@ -229,6 +254,31 @@ const padActions: Record<string, PadTemplate> = {
     const path = targetOf(step, "file path");
     return withHints(step, path.hints, `File.Delete Files: ${path.value}`);
   },
+  ReadTextFile: (step) => {
+    const path = targetOf(step, "file path");
+    return withHints(
+      step,
+      path.hints,
+      `File.ReadTextFromFile.ReadText File: ${path.value} Encoding: File.TextFileEncoding.UTF8 Content=> FileContents`
+    );
+  },
+  ReadCsvFile: (step) => {
+    const path = targetOf(step, "file path");
+    return withHints(
+      step,
+      path.hints,
+      `File.ReadFromCSVFile.ReadCSV CSVFile: ${path.value} Encoding: File.CSVEncoding.UTF8 TrimFields: True FirstLineContainsColumnNames: True ColumnsSeparator: File.CSVColumnsSeparator.SystemDefault CSVTable=> CSVTable`
+    );
+  },
+  CopyFile: (step) => {
+    const path = targetOf(step, "file to copy");
+    return withHints(
+      step,
+      [...path.hints, "set the destination folder"],
+      `File.Copy Files: ${path.value} Destination: ${text("TODO")} IfFileExists: File.IfExists.DoNothing CopiedFiles=> CopiedFiles`
+    );
+  },
+  CreateFolder: (step) => createFolder(step),
   StringTrim: (step) =>
     withHints(
       step,
@@ -236,9 +286,81 @@ const padActions: Record<string, PadTemplate> = {
       `Text.Trim Text: ${text("TODO")} TrimOption: Text.TrimOption.Both TrimmedText=> TrimmedText`
     ),
 
-  // Variables
+  // Variables, data tables, lists and JSON
   SetVariable: (step) => setVariable(step),
+  TableGetRowItem: (step) => [
+    todo(step, "read the column from the row, e.g. %CurrentItem['Name']%"),
+    `SET RowItem TO ${text("TODO")}`,
+  ],
+  ListAddItem: (step) =>
+    withHints(step, ["set the item and the list"], `Variables.AddItemToList Item: ${text("TODO")} List: List`),
+  StringReplace: (step) =>
+    withHints(
+      step,
+      ["set the text, the pattern and the replacement"],
+      `Text.Replace Text: ${text("TODO")} TextToFind: ${text("TODO")} IsRegEx: True IgnoreCase: False ReplaceWith: ${text("TODO")} ActivateEscapeSequences: False Result=> Replaced`
+    ),
+  JsonParse: (step) =>
+    withHints(
+      step,
+      ["set the JSON text"],
+      `Variables.ConvertJsonToCustomObject Json: ${text("TODO")} CustomObject=> JsonAsCustomObject`
+    ),
+
+  // Databases
+  DatabaseConnect: (step) =>
+    withHints(step, ["set the connection string"], `Database.Connect ConnectionString: ${text("TODO")} Connection=> SQLConnection`),
+  DatabaseRunQuery: (step) =>
+    withHints(
+      step,
+      ["set the SQL statement"],
+      `Database.ExecuteSqlStatement.Execute Connection: SQLConnection Statement: ${text("TODO")} Timeout: 30 Result=> QueryResult`
+    ),
+
+  // System: processes, waiting, dialogs and loops
+  StartProcess: (step) => {
+    const path = targetOf(step, "application path");
+    return withHints(
+      step,
+      path.hints,
+      `System.RunApplication.RunApplication ApplicationPath: ${path.value} WindowStyle: System.ProcessWindowStyle.Normal ProcessId=> AppProcessId`
+    );
+  },
+  KillProcess: (step) => {
+    const name = targetOf(step, "process name");
+    return withHints(step, name.hints, `System.TerminateProcess.TerminateProcessByName ProcessName: ${name.value}`);
+  },
+  Wait: (step) => [todo(step, "set the duration in seconds"), "WAIT 5"],
+  ShowMessage: (step) => {
+    const value = valueOf(step);
+    return withHints(
+      step,
+      value.hints,
+      `Display.ShowMessageDialog.ShowMessage Title: ${text("")} Message: ${value.value} Icon: Display.Icon.None Buttons: Display.Buttons.OK DefaultButton: Display.DefaultButton.Button1 IsTopMost: False ButtonPressed=> ButtonPressed`
+    );
+  },
+  AskForInput: (step) =>
+    withHints(
+      step,
+      ["set the title and the message"],
+      `Display.InputDialog Title: ${text("TODO")} Message: ${text("TODO")} InputType: Display.InputType.SingleLine IsTopMost: False UserInput=> UserInput ButtonPressed=> ButtonPressed`
+    ),
+  ExitLoop: () => ["EXIT LOOP"],
 };
+
+/** PAD creates a folder from its parent folder and its name, so a literal path is split. */
+function createFolder(step: PadStep): string[] {
+  const source = step.source;
+  const literal = source?.target && source.targetLanguage === "Literal" ? source.target : undefined;
+  const split = literal ? /^(.*)[\\/]([^\\/]+)[\\/]?$/.exec(literal) : null;
+  if (split) {
+    return [`Folder.Create FolderPath: ${text(split[1])} FolderName: ${text(split[2])} Folder=> NewFolder`];
+  }
+  const hint = source?.target
+    ? `set the parent folder and the folder name; UiPath creates ${source.target}`
+    : "set the parent folder and the folder name";
+  return [todo(step, hint), `Folder.Create FolderPath: ${text("TODO")} FolderName: ${text("TODO")} Folder=> NewFolder`];
+}
 
 const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/;
 

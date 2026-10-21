@@ -8,6 +8,7 @@ import {
   comment,
   padActionFor,
   padContainerFor,
+  padOperationIds,
   padScopeFor,
   PadStep,
   todo,
@@ -52,12 +53,58 @@ export function generatePadFlow(name: string, processTree: IProcessTree): string
   return [...header, "", ...body].join("\n") + "\n";
 }
 
-const INSTANCE_USE = /\b(?:BrowserInstance|Instance): (\w+)/;
-const INSTANCE_DEFINITION = /\b(?:BrowserInstance|Instance)=> (\w+)/;
+/**
+ * One flow with every action the exporter can generate, to paste into the PAD designer once and
+ * check that PAD accepts each action name. Browser, Excel and Outlook actions run inside their
+ * application, ExitLoop inside a loop, and the query after the connection.
+ */
+export function padCatalogFlow(): string {
+  const nodeInfo: Record<string, IProcessTreeNodeInfo> = {};
+  const step = (concept: string, info: Partial<IProcessTreeNodeInfo> = {}) => {
+    nodeInfo[concept] = { label: concept, concept, mappingStatus: "mapped", ...info };
+    return concept;
+  };
+  const operations = Array.from(padOperationIds())
+    .filter((operation) => padActionFor(operation))
+    .sort((a, b) => a.localeCompare(b));
+  // The application's own open action first, its close action last
+  const rank = (prefix: string, operation: string) =>
+    operation === `${prefix}Open` ? -1 : operation === `${prefix}Close` ? 1 : 0;
+  const inApp = (prefix: string) =>
+    operations
+      .filter((operation) => operation.startsWith(prefix))
+      .sort((a, b) => rank(prefix, a) - rank(prefix, b));
+  const elsewhere = operations.filter(
+    (operation) => !/^(Browser|Excel|Outlook)/.test(operation) && operation !== "ExitLoop"
+  );
+  // The connection before the query
+  elsewhere.sort((a, b) => Number(b === "DatabaseConnect") - Number(a === "DatabaseConnect"));
+
+  const tree: TreeItem[] = [
+    { [step("WithBrowser")]: inApp("Browser").map((operation) => step(operation)) },
+    { [step("WithMicrosoftExcel")]: inApp("Excel").map((operation) => step(operation)) },
+    {
+      [step("Outlook", { concept: "", mappingStatus: "structural", source: { vendor: "UiPath", activityType: "OutlookApplicationCard", file: "", context: "outlook" } })]:
+        inApp("Outlook").map((operation) => step(operation)),
+    },
+    ...elsewhere.map((operation) => step(operation)),
+    { [step("ForEachLoop")]: [step("ExitLoop")] },
+    { [step("ConditionalLoop")]: [] },
+    { Gateway_BinaryDecision: [{ Flow: [] }, { Flow: [] }] },
+    { Gateway_CaseDecision: [{ Flow: [] }, { Flow: [] }] },
+  ];
+  nodeInfo.Gateway_BinaryDecision = { label: "BinaryDecision", concept: "BinaryDecision", mappingStatus: "mapped" };
+  nodeInfo.Gateway_CaseDecision = { label: "CaseDecision", concept: "CaseDecision", mappingStatus: "mapped" };
+  return generatePadFlow("PAD action catalog", { tree: { Process: tree }, nodeInfo });
+}
+
+const INSTANCE_USE =/\b(?:BrowserInstance|Instance|Connection): (\w+)/;
+const INSTANCE_DEFINITION = /\b(?:BrowserInstance|Instance|Connection)=> (\w+)/;
 
 /**
- * Points out the first action that uses an application instance (%Browser%, %ExcelInstance%, …)
- * no earlier action launches, e.g. a UiPath click on a browser the bot did not open itself.
+ * Points out the first action that uses an application instance or connection (%Browser%,
+ * %ExcelInstance%, %SQLConnection%, …) no earlier action opens, e.g. a UiPath click on a browser
+ * the bot did not open itself.
  */
 function flagMissingInstances(lines: string[]): string[] {
   const known = new Set<string>();
@@ -68,7 +115,7 @@ function flagMissingInstances(lines: string[]): string[] {
       used && !known.has(used)
         ? [
             line.match(/^\s*/)![0] +
-              comment(`TODO: nothing launches %${used}% before this action; launch or attach to the application first`),
+              comment(`TODO: nothing opens %${used}% before this action; launch, attach to or connect to it first`),
           ]
         : [];
     [used, defined].forEach((variable) => variable && known.add(variable));

@@ -11,6 +11,9 @@ Pooled: all steps of all bots together. Median: over bots with steps.
 | 1a | 2026-10-21 | dev (public) | 40 | 4,625 | 71.5 % | 63.4 % | 71.4 % | 63.4 % |
 | 1a | | eval (client) | – | – | pending | | | |
 | 1a | 2026-10-21 | templates | 11 | 33 | 93.9 % | 100 % | 78.8 % | 75 % |
+| 2 | 2026-10-21 | dev (public) | 40 | 4,686 | 87.8 % | 85.6 % | 80.7 % | 76.7 % |
+| 2 | | eval (client) | – | – | pending | | | |
+| 2 | 2026-10-21 | templates | 11 | 33 | 93.9 % | 100 % | 78.8 % | 75 % |
 
 ## Round 0: baseline
 
@@ -43,3 +46,14 @@ PAD coverage is practically the same as ontology coverage, so the gap is almost 
   - `WordScope` → Word scope
   - `ExcelProcessScopeX` → structural, so it is no longer a step
 - **Ignored** (no effect on the automated system): `Highlight`, 6 occurrences. Together with the scopes, this is why the step count fell by 17.
+
+## Round 2: ontology extension from the dev set
+
+31 new operations (in 14 new classes) for the 35 activity types that occur at least 5 times in at least 3 dev bots. The evidence and design are in [`ontology-extensions.md`](ontology-extensions.md#round-2-2026-10-21-from-the-public-dev-corpus). PAD actions were added for 19 of them; the other 12 are ontology-only until their Robin is copied from the PAD designer, which is why PAD coverage now trails ontology coverage.
+
+- Check App State (`NCheckState`) with steps in its branches imports as a decision. Before, the steps in its branches were lost, so the step count rose by 61.
+- Dev set after round 2:
+  - 402 unmapped steps in 110 activity types. None meets the threshold, and most occur in one or two bots (e.g. `ExcelLookUpRange`, `ClickImage`, `RemoveDataColumn`).
+  - 334 ontology-only steps (data tables, element checks, PathExists, HTTP, SMTP).
+  - 170 manual steps.
+- The numbers are circular, because the extensions come from the same bots. The eval set's change is the evidence that counts.

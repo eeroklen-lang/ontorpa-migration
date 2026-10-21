@@ -27,7 +27,7 @@ const imported = importProject(
           <If.Else><ui:InvokeCode DisplayName="Login script" /></If.Else>
         </If>
         <While DisplayName="Retry" Condition="[tries &lt; 3]"><Assign DisplayName="Count" /></While>
-        <ui:KillProcess DisplayName="Stop app" />
+        <ui:Beep DisplayName="Beep" />
       </Sequence>
     </Activity>`,
   },
@@ -46,7 +46,7 @@ describe("renderProcessTree", () => {
       '      ! InvokeCode  "Login script"  [Invoke Code: custom VB/C# code]',
       '  ✓ ConditionalLoop (loop)  "Retry"',
       '    ✓ SetVariable  "Count"',
-      '  ✗ KillProcess  "Stop app"',
+      '  ✗ Beep  "Beep"',
     ]);
   });
 });
@@ -56,7 +56,7 @@ describe("renderReport", () => {
     const lines = renderReport(buildMigrationReport(imported));
     expect(lines[0]).toBe("Bot: Portal, bot  (Main.xaml; 1/1 workflow files imported)");
     expect(lines[1]).toBe("Steps: 7  mapped 5 · unmapped 1 · manual 1   Ontology coverage: 71%");
-    expect(lines[2]).toBe("Unmapped: KillProcess ×1");
+    expect(lines[2]).toBe("Unmapped: Beep ×1");
   });
 });
 
@@ -94,7 +94,7 @@ describe("gap tables", () => {
       "- Ontology coverage: pooled 71% · median 71%",
       "- Power Automate Desktop coverage: pooled 71% · median 71%",
     ]);
-    expect(lines).toContain("| KillProcess | 1 | 1 | +14.3 pp | none 1 |");
+    expect(lines).toContain("| Beep | 1 | 1 | +14.3 pp | none 1 |");
     expect(lines).toContain("| Invoke Code: custom VB/C# code | 1 | 1 | +14.3 pp |");
     expect(lines).toContain("## Ontology-only operations (no Power Automate Desktop action)");
   });
@@ -102,7 +102,7 @@ describe("gap tables", () => {
   it("writes every gap as a CSV row with its kind", () => {
     expect(gapsCsv(gaps).split("\n")).toEqual([
       "Kind,Name,Occurrences,Bots,Gain,Contexts",
-      "unmapped,KillProcess,1,1,0.1429,none 1",
+      "unmapped,Beep,1,1,0.1429,none 1",
       "manual,Invoke Code: custom VB/C# code,1,1,0.1429,",
     ]);
   });

@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest";
 import BotLinkerContext from "../../src/botLinkers/BotLinkerContext";
 import {
   generatePadFlow,
+  padCatalogFlow,
   padStepLines,
 } from "../../src/botLinkers/powerAutomateDesktopLinker/PowerAutomateDesktopLinker";
-import { padOperationIds, text } from "../../src/botLinkers/powerAutomateDesktopLinker/padMapping";
+import { padActionFor, padOperationIds, text } from "../../src/botLinkers/powerAutomateDesktopLinker/padMapping";
 import {
   IProcessTree,
   IProcessTreeNodeInfo,
@@ -52,7 +53,7 @@ const deleteStep: IProcessTreeNodeInfo = {
 const deleteLine = `File.Delete Files: ${text("old.txt")}`;
 
 const MISSING_BROWSER =
-  "# TODO: nothing launches %Browser% before this action; launch or attach to the application first";
+  "# TODO: nothing opens %Browser% before this action; launch, attach to or connect to it first";
 
 describe("generatePadFlow", () => {
   it("wraps container bodies in launch and close actions, using a literal URL", () => {
@@ -92,7 +93,7 @@ describe("generatePadFlow", () => {
     expect(lines[2]).toContain(`Control: appmask['TODO']['TODO'] Text: ${text("TODO")}`);
   });
 
-  it("points out the first use of an application instance that nothing launches", () => {
+  it("points out the first use of an application instance that nothing opens", () => {
     const click: IProcessTreeNodeInfo = { label: "Click", concept: "BrowserClickButton", mappingStatus: "mapped" };
     const lines = body(
       tree(["Activity_1", { Gateway_1: ["Activity_1", "Activity_1"] }, { Activity_2: ["Activity_3"] }], {
@@ -102,7 +103,7 @@ describe("generatePadFlow", () => {
         Activity_3: { label: "Save", concept: "ExcelSaveWorkbook" },
       })
     );
-    expect(lines.filter((line) => line.includes("nothing launches"))).toEqual([MISSING_BROWSER]);
+    expect(lines.filter((line) => line.includes("nothing opens"))).toEqual([MISSING_BROWSER]);
     expect(lines.indexOf(MISSING_BROWSER)).toBe(1);
   });
 
@@ -199,6 +200,38 @@ describe("generatePadFlow", () => {
     expect(lines[1]).toContain(`File.WriteText File: ${text("new.txt")} TextToWrite: ${text("")} `);
   });
 
+  it("writes round 2 actions: desktop UI, folders, processes, queries and leaving a loop", () => {
+    const step = (concept: string, source = {}): IProcessTreeNodeInfo => ({
+      label: concept,
+      concept,
+      mappingStatus: "mapped",
+      source: uipath(concept, source),
+    });
+    const lines = body(
+      tree(["Activity_1", "Activity_2", "Activity_3", "Activity_4", { Loop_1: ["Activity_5"] }], {
+        Activity_1: step("ClickElement", { context: "sap" }),
+        Activity_2: step("CreateFolder", { target: "C:\\Out\\2026", targetLanguage: "Literal" }),
+        Activity_3: step("KillProcess", { target: "chrome.exe", targetLanguage: "Literal" }),
+        Activity_4: step("DatabaseRunQuery"),
+        Loop_1: { label: "Each", concept: "ForEachLoop", mappingStatus: "mapped" },
+        Activity_5: step("ExitLoop"),
+      })
+    );
+    expect(lines).toEqual([
+      '# TODO "ClickElement": re-capture the UI element',
+      "UIAutomation.Click Element: appmask['TODO']['TODO'] ClickType: UIAutomation.ClickType.LeftClick MousePositionRelativeToElement: UIAutomation.RectangleEdgePoint.MiddleCenter OffsetX: 0 OffsetY: 0",
+      `Folder.Create FolderPath: ${text("C:\\Out")} FolderName: ${text("2026")} Folder=> NewFolder`,
+      `System.TerminateProcess.TerminateProcessByName ProcessName: ${text("chrome.exe")}`,
+      '# TODO "DatabaseRunQuery": set the SQL statement',
+      "# TODO: nothing opens %SQLConnection% before this action; launch, attach to or connect to it first",
+      `Database.ExecuteSqlStatement.Execute Connection: SQLConnection Statement: ${text("TODO")} Timeout: 30 Result=> QueryResult`,
+      '# TODO "Each": set the list to loop over',
+      "LOOP FOREACH CurrentItem IN Collection1",
+      "    EXIT LOOP",
+      "END",
+    ]);
+  });
+
   it("translates simple assignments and flags the rest", () => {
     const assign = (label: string, expression: string): IProcessTreeNodeInfo => ({
       label,
@@ -265,6 +298,25 @@ describe("BotLinkerContext", () => {
     });
     expect(output).toContain('# Power Automate Desktop skeleton for "Stored bot"');
     expect(output).toContain("WebAutomation.CloseWebBrowser BrowserInstance: Browser");
+  });
+});
+
+describe("padCatalogFlow", () => {
+  const flow = padCatalogFlow();
+  const actions = Array.from(padOperationIds()).filter((operation) => padActionFor(operation));
+
+  it("has a step for every PAD action, each inside the application or connection it needs", () => {
+    for (const operation of actions) {
+      padActionFor(operation)!({ label: operation }).forEach((line) => expect(flow).toContain(line));
+    }
+    expect(flow).not.toContain("no Power Automate Desktop action");
+    expect(flow).not.toContain("nothing opens");
+  });
+
+  it("has balanced blocks", () => {
+    const lines = flow.split("\n").map((l) => l.trim());
+    const opened = lines.filter((l) => /^(IF .* THEN|LOOP |SWITCH )/.test(l)).length;
+    expect(lines.filter((l) => l === "END").length).toBe(opened);
   });
 });
 

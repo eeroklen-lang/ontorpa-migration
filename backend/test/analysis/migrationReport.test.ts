@@ -53,12 +53,12 @@ describe("buildMigrationReport", () => {
 
   it("lists unmapped activity types with their context, most frequent first", () => {
     const withUnmapped = buildMigrationReport(
-      importBot(`<Sequence>${click("A")}<ui:KillProcess />${click("B")}${browserCard("<ui:KillProcess />")}</Sequence>`)
+      importBot(`<Sequence>${click("A")}<ui:Beep />${click("B")}${browserCard("<ui:Beep />")}</Sequence>`)
     );
     expect(withUnmapped.unmappedActivities).toEqual([
       { activityType: "NClick", count: 2 },
-      { activityType: "KillProcess", count: 1 },
-      { activityType: "KillProcess", context: "browser", count: 1 },
+      { activityType: "Beep", count: 1 },
+      { activityType: "Beep", context: "browser", count: 1 },
     ]);
   });
 

@@ -243,17 +243,17 @@ describe("importProject: application context", () => {
     expect(tree).toBe("Process(WithBrowser(WithMicrosoftExcel(BrowserClickButton)))");
   });
 
-  it("leaves UI activities in desktop and SAP scopes unmapped but records the context", () => {
+  it("maps UI activities in desktop and SAP scopes to human-interface operations, keeping the context", () => {
     const sap = `
       <uix:NApplicationCard DisplayName="Use SAP">
         <uix:NApplicationCard.Body><ActivityAction x:TypeArguments="x:Object">${click}</ActivityAction></uix:NApplicationCard.Body>
         <uix:NApplicationCard.TargetApp><uix:TargetApp FilePath="C:\\SAP\\saplogon.exe" /></uix:NApplicationCard.TargetApp>
       </uix:NApplicationCard>`;
     const { result, tree } = importMain(`<Sequence>${sap}${click}</Sequence>`);
-    expect(tree).toBe("Process(Flow(?NApplicationCard(?NClick), ?NClick))");
+    expect(tree).toBe("Process(Flow(?NApplicationCard(ClickElement), ?NClick))");
     const info = result.processTree.nodeInfo;
     expect([info.Activity_1.mappingStatus, info.Activity_1.source?.context]).toEqual(["structural", "sap"]);
-    expect([info.Activity_2.mappingStatus, info.Activity_2.source?.context]).toEqual(["unmapped", "sap"]);
+    expect([info.Activity_2.mappingStatus, info.Activity_2.source?.context]).toEqual(["mapped", "sap"]);
     expect(info.Activity_3.source?.context).toBeUndefined();
   });
 
@@ -274,7 +274,7 @@ describe("importProject: application context", () => {
       ${classic("{x:Null}")}
     </Sequence>`);
     expect(tree).toBe(
-      "Process(Flow(BrowserClickButton, BrowserClickButton, BrowserClickButton, BrowserClickButton, ?Click, ?Click, ?Click, ?Click))"
+      "Process(Flow(BrowserClickButton, BrowserClickButton, BrowserClickButton, BrowserClickButton, ClickElement, ClickElement, ?Click, ?Click))"
     );
     expect(nodes.map((n) => n.source?.context)).toEqual([
       "browser",
@@ -295,7 +295,7 @@ describe("importProject: application context", () => {
           <ui:Click DisplayName="Click"><ui:Click.Target><ui:Target Selector="&lt;html app='chrome.exe' /&gt;" /></ui:Click.Target></ui:Click>
         </ActivityAction></ui:OpenApplication.Body>
       </ui:OpenApplication>`);
-    expect(tree).toBe("Process(?OpenApplication(?Click))");
+    expect(tree).toBe("Process(?OpenApplication(ClickElement))");
     expect(nodes[1].source?.context).toBe("desktop");
   });
 
@@ -312,6 +312,31 @@ describe("importProject: application context", () => {
       "Process(Flow(DeleteFile, CreateTextFile, WithMicrosoftExcel(Flow(ExcelWriteRange, ExcelCopyRange))))"
     );
     expect(nodes[2].source).toMatchObject({ context: "excel", target: "report.xlsx" });
+  });
+
+  it("maps round 2 operations: data tables, files, databases, waiting, dialogs and leaving a loop", () => {
+    const { tree } = importMain(`<Sequence>
+      <ui:BuildDataTable /><ui:AddDataRow /><ui:FilterDataTable />
+      <ui:CreateDirectory Path="out" /><ui:PathExists /><ui:ReadCsvFile FilePath="in.csv" />
+      <ui:DatabaseConnect /><ui:ExecuteQuery />
+      <ui:Delay /><ui:MessageBox Text="Done" /><ui:SendHotkey />
+      <ForEach DisplayName="Each"><ActivityAction><Sequence><ui:Break /></Sequence></ActivityAction></ForEach>
+    </Sequence>`);
+    expect(tree).toBe(
+      "Process(Flow(TableCreate, TableAddRow, TableFilter, CreateFolder, PathExists, ReadCsvFile, " +
+        "DatabaseConnect, DatabaseRunQuery, Wait, ShowMessage, PressKeys, ForEachLoop(ExitLoop)))"
+    );
+  });
+
+  it("turns Check App State into a decision on the element, or an element check without branches", () => {
+    const check = (ifExists: string, ifNotExists: string) => `
+      <uix:NCheckState DisplayName="Check App State">
+        <uix:NCheckState.IfExists><ActivityAction x:TypeArguments="x:Object"><Sequence>${ifExists}</Sequence></ActivityAction></uix:NCheckState.IfExists>
+        <uix:NCheckState.IfNotExists><ActivityAction x:TypeArguments="x:Object"><Sequence>${ifNotExists}</Sequence></ActivityAction></uix:NCheckState.IfNotExists>
+      </uix:NCheckState>`;
+    const { tree, result } = importMain(`<Sequence>${check(`<Assign DisplayName="Found" />`, "")}${check("", "")}</Sequence>`);
+    expect(tree).toBe("Process(Flow(BinaryDecision(SetVariable, Flow()), CheckElement))");
+    expect(result.processTree.nodeInfo.Gateway_1.source?.expression).toBe("the target UI element appears");
   });
 
   it("marks custom code and orchestration activities as manual", () => {
