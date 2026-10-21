@@ -17,10 +17,10 @@ Tick boxes as work lands. Paths are relative to the repo root (`backend/…`, `f
 | M0: Setup | In progress |
 | M1: UiPath import (#1) | Done |
 | M2: Mapping + readiness report (#2) | Done (target coverage follows with M3) |
-| M3: PAD skeleton exporter | Done (Robin names not yet validated in PAD) |
+| M3: PAD skeleton exporter | Done (Robin names checked against PAD in M6) |
 | M4: API + UI integration | Done |
 | M5: Diagrams and migration workbench | Done |
-| M6: Growing the mapping rate | In progress (rounds 0, 1a and 2 done; PAD names and eval set next) |
+| M6: Growing the mapping rate | In progress (rounds 0–2b done; second PAD paste and eval set next) |
 | Verification | In progress (real bots, UI click-through, PAD on Windows) |
 
 ## Context
@@ -126,7 +126,7 @@ Findings from the templates that the importer must handle:
 ## M3: PAD skeleton exporter
 
 - [x] `backend/src/botLinkers/powerAutomateDesktopLinker/padMapping.ts`: ontology id → PAD Robin action template, e.g. `ExcelReadCellValue → Excel.ReadFromExcel.ReadCell Instance: ExcelInstance StartColumn: $'''A''' …`. Containers map to launch/close (`WebAutomation.LaunchEdge…` / `CloseWebBrowser`, `Excel.LaunchExcel.LaunchAndOpenUnderExistingProcess` / `CloseAndSave`); an Outlook scope to `Outlook.Launch` / `Outlook.Close`
-  - Only actions with a confident Robin name are mapped. No PAD action yet (counted as "ontology-only"): `ExcelExportPDF`, `ExcelFilterRange`, `ExcelFormatAsTable`, `OutlookDeleteEmail`, `OutlookSaveAttachments`, `StringHash`, Word, G Suite, triggers; `ParallelSplit` runs its branches one after another
+  - Only actions with a confident Robin name are mapped. No PAD action yet (counted as "ontology-only"): `ExcelExportPDF`, `ExcelFilterRange`, `ExcelFormatAsTable`, `OutlookDeleteEmail`, `OutlookSaveAttachments`, `StringHash`, Word, G Suite, triggers; `ParallelSplit` runs its branches one after another. (M6 round 2b added `ExcelFilterRange`, `OutlookDeleteEmail`, `OutlookSaveAttachments` and `StringHash`)
   - Literal URLs, paths and values are filled in; VB/C# expressions become `$'''TODO'''` with the original in a TODO comment (the importer now records `expressionLanguage` / `targetLanguage`). Simple assignments (`x = 3`, `x = "a"`, `x = True`) become `SET`
   - UI elements are `appmask['TODO']['TODO']`: selectors have to be re-captured in PAD
 - [x] `PowerAutomateDesktopLinker.ts`: implements `BotLinkerStrategyInterface`; `generatePadFlow(name, processTree)` for direct use
@@ -221,7 +221,8 @@ Decisions (2026-10-21):
 
   PAD actions for 19 of them. Check App State with branches is a decision, and its branch steps are no longer lost. Dev set: 87.8 % pooled ontology coverage, 80.7 % PAD coverage
 - [x] `npm run pad:catalog` (`backend/src/cli/padCatalog.ts`): one Robin flow with every PAD action
-- [ ] Paste the catalog into PAD on Windows and fix the names PAD rejects. Copy the Robin of the 12 ontology-only round 2 operations from the designer (listed in `padMapping.ts`)
+- [x] Round 2b: first catalog paste into PAD (18 errors). Actions fixed from the PAD Robin Action Knowledge Base, PAD actions added for the 12 ontology-only round 2 operations and 4 older ones, and `test/fixtures/pad-robin-actions.json` plus a test that checks every catalog line against it (`scripts/update-pad-robin-fixture.js` refreshes it). Dev set: 87.7 % PAD coverage
+- [ ] Paste the corrected catalog into PAD and confirm that only TODO values and placeholder UI elements are flagged
 - [ ] Eval set: copy the client bots into `samples/client/` and measure rounds 0, 1a and 2
 
 ## Verification

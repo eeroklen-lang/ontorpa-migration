@@ -829,7 +829,7 @@ function expressionOf(node: XamlNode): XamlExpression | undefined {
 }
 
 function targetOf(node: XamlNode): XamlExpression | undefined {
-  for (const property of ["Url", "WorkbookPath", "FileName", "FilePath", "Path", "SheetName", "ProcessName"]) {
+  for (const property of ["Url", "EndPoint", "WorkbookPath", "FileName", "FilePath", "Path", "SheetName", "ProcessName"]) {
     const argument = getArgument(node, property);
     if (argument) {
       return argument;

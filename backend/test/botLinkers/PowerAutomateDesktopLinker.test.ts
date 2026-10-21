@@ -13,6 +13,7 @@ import {
 } from "../../src/interfaces/BotModelInterface";
 import { importProject } from "../../src/importers/uipath/UiPathImporter";
 import { isOntologyOperation } from "../../src/utils/ontologyIndex";
+import robinActions from "../fixtures/pad-robin-actions.json";
 import { hasSamples, sampleFiles, sampleProjects } from "../samples";
 
 const HEADER_LINES = 2;
@@ -219,7 +220,7 @@ describe("generatePadFlow", () => {
     );
     expect(lines).toEqual([
       '# TODO "ClickElement": re-capture the UI element',
-      "UIAutomation.Click Element: appmask['TODO']['TODO'] ClickType: UIAutomation.ClickType.LeftClick MousePositionRelativeToElement: UIAutomation.RectangleEdgePoint.MiddleCenter OffsetX: 0 OffsetY: 0",
+      "UIAutomation.Click.Click Element: appmask['TODO']['TODO'] ClickType: UIAutomation.ClickType.LeftClick MousePositionRelativeToElement: UIAutomation.RectangleEdgePoint.MiddleCenter OffsetX: 0 OffsetY: 0",
       `Folder.Create FolderPath: ${text("C:\\Out")} FolderName: ${text("2026")} Folder=> NewFolder`,
       `System.TerminateProcess.TerminateProcessByName ProcessName: ${text("chrome.exe")}`,
       '# TODO "DatabaseRunQuery": set the SQL statement',
@@ -262,14 +263,14 @@ describe("generatePadFlow", () => {
       tree(["Activity_1", "Activity_2", "Activity_3", "Activity_404", { Activity_5: ["Activity_1"] }], {
         Activity_1: { label: "Kill app", concept: "", mappingStatus: "unmapped", source: uipath("KillProcess") },
         Activity_2: { label: "Script", concept: "", mappingStatus: "manual", source: uipath("InvokeCode", { reason: "Invoke Code: custom VB/C# code" }) },
-        Activity_3: { label: "Filter", concept: "ExcelFilterRange", mappingStatus: "mapped", source: uipath("FilterX") },
+        Activity_3: { label: "Table", concept: "ExcelFormatAsTable", mappingStatus: "mapped", source: uipath("CreateTableX") },
         Activity_5: { label: "Use SAP", concept: "", mappingStatus: "structural", source: uipath("NApplicationCard", { context: "sap" }) },
       })
     );
     expect(lines).toEqual([
       '# TODO "Kill app" (UiPath KillProcess): no ontology operation, rebuild by hand',
       '# TODO "Script" (UiPath InvokeCode): Invoke Code: custom VB/C# code',
-      '# TODO "Filter": no Power Automate Desktop action for ExcelFilterRange yet',
+      '# TODO "Table": no Power Automate Desktop action for ExcelFormatAsTable yet',
       "# TODO: unknown step Activity_404",
       '# TODO "Use SAP": attach to the sap application; UI actions need the UI element picker',
       '# TODO "Kill app" (UiPath KillProcess): no ontology operation, rebuild by hand',
@@ -301,16 +302,78 @@ describe("BotLinkerContext", () => {
   });
 });
 
+interface RobinAction {
+  kind: string;
+  inputs: Record<string, string[] | null>;
+  outputs: string[];
+}
+
+/**
+ * The action id, kind, arguments (Name: value) and outputs (Name=> Variable) of a Robin action
+ * line, or undefined for comments and statements such as SET, LOOP or END. Strings, UI elements,
+ * tables and lists are replaced first, so their contents are not read as arguments.
+ */
+function parseRobin(line: string) {
+  const wrapped = /^(IF|WAIT) \((.*)\)(?: THEN)?$/.exec(line);
+  const plain = (wrapped?.[2] ?? line)
+    .replace(/\$'''(?:[^'\\]|\\.|'(?!''))*'''/g, "S")
+    .replace(/appmask(?:\['(?:[^'\\]|\\.)*'\])+/g, "E")
+    .replace(/\{[^}]*\}/g, "T")
+    .replace(/\[[^\]]*\]/g, "L");
+  const id = /^([A-Z][A-Za-z]+(?:\.[A-Za-z]+)+)(?:\s|$)/.exec(plain)?.[1];
+  if (!id) {
+    return undefined;
+  }
+  return {
+    id,
+    kind: wrapped?.[1] === "IF" ? "Condition" : wrapped?.[1] === "WAIT" ? "Wait" : "Action",
+    args: [...plain.matchAll(/ (\w+): (\S+)/g)].map((m) => [m[1], m[2]] as [string, string]),
+    outputs: [...plain.matchAll(/ (\w+)=> /g)].map((m) => m[1]),
+  };
+}
+
 describe("padCatalogFlow", () => {
   const flow = padCatalogFlow();
   const actions = Array.from(padOperationIds()).filter((operation) => padActionFor(operation));
 
   it("has a step for every PAD action, each inside the application or connection it needs", () => {
     for (const operation of actions) {
-      padActionFor(operation)!({ label: operation }).forEach((line) => expect(flow).toContain(line));
+      padActionFor(operation)!({ label: operation })
+        .filter((line) => !line.startsWith("#"))
+        .forEach((line) => expect(flow).toContain(line));
     }
     expect(flow).not.toContain("no Power Automate Desktop action");
     expect(flow).not.toContain("nothing opens");
+  });
+
+  it("uses only actions, arguments and enum values of the PAD Robin knowledge base", () => {
+    const problems: string[] = [];
+    for (const line of flow.split("\n").map((l) => l.trim())) {
+      const parsed = parseRobin(line);
+      if (!parsed) {
+        continue;
+      }
+      const known = (robinActions.actions as Record<string, RobinAction>)[parsed.id];
+      if (!known) {
+        problems.push(`unknown action ${parsed.id}`);
+        continue;
+      }
+      if (known.kind !== parsed.kind) {
+        problems.push(`${parsed.id} is a ${known.kind}, written as ${parsed.kind}`);
+      }
+      for (const [name, value] of parsed.args) {
+        const values = known.inputs[name];
+        if (values === undefined) {
+          problems.push(`${parsed.id}: unknown argument ${name}`);
+        } else if (values && /^\w+\.\w+\.\w+$/.test(value) && !values.includes(value.split(".")[2])) {
+          problems.push(`${parsed.id}: ${name} has no value ${value}`);
+        }
+      }
+      parsed.outputs
+        .filter((name) => !known.outputs.includes(name))
+        .forEach((name) => problems.push(`${parsed.id}: unknown output ${name}`));
+    }
+    expect(problems).toEqual([]);
   });
 
   it("has balanced blocks", () => {

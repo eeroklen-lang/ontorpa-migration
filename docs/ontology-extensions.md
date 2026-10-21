@@ -53,14 +53,7 @@ Design notes:
 - **`ExitLoop` is control flow** (`loop-control`); PAD has `EXIT LOOP`. The modeler's metrics count it with the other control-flow operations.
 - **Check App State is a decision when it has branches.** With steps in its "element appears" or "element does not appear" branch, `NCheckState` imports as a `BinaryDecision`; without them it is a `CheckElement`. Before round 2, the steps in its branches were not imported at all.
 
-**PAD.** The exporter generates PAD actions for 19 of the 31 new operations. For the other 12, PAD has a native action, but its Robin text has not been copied from the designer yet, so they count as ontology-only for now:
-- CheckElement and MaximizeWindow
-- BrowserExtractTable
-- the data table operations other than TableGetRowItem
-- PathExists
-- HttpRequest and SmtpSendEmail
-
-`npm run pad:catalog` prints every generated action as one flow, so the names can be checked in PAD in a single paste.
+**PAD.** All 31 new operations have PAD actions. At first, only 19 had them. After the first paste of `npm run pad:catalog` into PAD, the action names were corrected and the other 12 added from the PAD Robin Action Knowledge Base (round 2b in [`coverage-history.md`](coverage-history.md)). Element checks and PathExists become conditions or waits in PAD. Extract table and Filter data table get an empty parameter table, with a TODO to record the columns or rules in PAD.
 
 **Effect on the dev set (circular, as in round 1):** 71.5 % → 87.8 % pooled ontology coverage (median 63.4 % → 85.6 %), and 71.4 % → 80.7 % PAD coverage. As with round 1, these numbers are derived from the same bots that justified the extensions. Only the eval set can show whether the ontology generalises.
 

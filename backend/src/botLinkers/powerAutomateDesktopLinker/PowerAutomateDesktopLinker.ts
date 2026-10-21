@@ -56,49 +56,63 @@ export function generatePadFlow(name: string, processTree: IProcessTree): string
 /**
  * One flow with every action the exporter can generate, to paste into the PAD designer once and
  * check that PAD accepts each action name. Browser, Excel and Outlook actions run inside their
- * application, ExitLoop inside a loop, and the query after the connection.
+ * application, ExitLoop inside a loop, the query after the connection and the table actions after
+ * the table is created. Templates with several forms appear once per form.
  */
 export function padCatalogFlow(): string {
   const nodeInfo: Record<string, IProcessTreeNodeInfo> = {};
-  const step = (concept: string, info: Partial<IProcessTreeNodeInfo> = {}) => {
-    nodeInfo[concept] = { label: concept, concept, mappingStatus: "mapped", ...info };
-    return concept;
+  const step = (concept: string, info: Partial<IProcessTreeNodeInfo> = {}, id = concept) => {
+    nodeInfo[id] = { label: id, concept, mappingStatus: "mapped", ...info };
+    return id;
   };
+  const uipath = (activityType: string, context?: string) => ({
+    source: { vendor: "UiPath" as const, activityType, file: "", ...(context ? { context } : {}) },
+  });
+  // Forms that depend on the UiPath activity: waiting for or checking an element, files or folders
+  const checks = (context?: string) =>
+    ["WaitUiElementAppear", "UiElementExists"].map((activity) =>
+      step("CheckElement", uipath(activity, context), `CheckElement_${activity}${context ? "_" + context : ""}`)
+    );
+  const variants: Record<string, () => string[]> = {
+    CheckElement: () => checks(),
+    PathExists: () =>
+      ["FileExistsX", "FolderExistsX"].map((activity) => step("PathExists", uipath(activity), `PathExists_${activity}`)),
+  };
+
   const operations = Array.from(padOperationIds())
     .filter((operation) => padActionFor(operation))
     .sort((a, b) => a.localeCompare(b));
-  // The application's own open action first, its close action last
+  // The application's own open action first, then retrieving emails (later actions process
+  // them), its close action last
   const rank = (prefix: string, operation: string) =>
-    operation === `${prefix}Open` ? -1 : operation === `${prefix}Close` ? 1 : 0;
+    operation === `${prefix}Open` ? -2 : operation === "OutlookGetEmails" ? -1 : operation === `${prefix}Close` ? 1 : 0;
   const inApp = (prefix: string) =>
     operations
       .filter((operation) => operation.startsWith(prefix))
-      .sort((a, b) => rank(prefix, a) - rank(prefix, b));
-  const elsewhere = operations.filter(
-    (operation) => !/^(Browser|Excel|Outlook)/.test(operation) && operation !== "ExitLoop"
-  );
-  // The connection before the query
-  elsewhere.sort((a, b) => Number(b === "DatabaseConnect") - Number(a === "DatabaseConnect"));
+      .sort((a, b) => rank(prefix, a) - rank(prefix, b))
+      .map((operation) => step(operation));
+  // Connections and tables before the actions that use them
+  const first = ["DatabaseConnect", "TableCreate"];
+  const elsewhere = operations
+    .filter((operation) => !/^(Browser|Excel|Outlook)/.test(operation) && operation !== "ExitLoop")
+    .sort((a, b) => Number(first.includes(b)) - Number(first.includes(a)))
+    .flatMap((operation) => (variants[operation] ? variants[operation]() : [step(operation)]));
+  const browser = inApp("Browser");
 
   const tree: TreeItem[] = [
-    { [step("WithBrowser")]: inApp("Browser").map((operation) => step(operation)) },
-    { [step("WithMicrosoftExcel")]: inApp("Excel").map((operation) => step(operation)) },
-    {
-      [step("Outlook", { concept: "", mappingStatus: "structural", source: { vendor: "UiPath", activityType: "OutlookApplicationCard", file: "", context: "outlook" } })]:
-        inApp("Outlook").map((operation) => step(operation)),
-    },
-    ...elsewhere.map((operation) => step(operation)),
+    { [step("WithBrowser")]: [...browser.slice(0, -1), ...checks("browser"), ...browser.slice(-1)] },
+    { [step("WithMicrosoftExcel")]: inApp("Excel") },
+    { [step("", { mappingStatus: "structural", ...uipath("OutlookApplicationCard", "outlook") }, "Outlook")]: inApp("Outlook") },
+    ...elsewhere,
     { [step("ForEachLoop")]: [step("ExitLoop")] },
     { [step("ConditionalLoop")]: [] },
-    { Gateway_BinaryDecision: [{ Flow: [] }, { Flow: [] }] },
-    { Gateway_CaseDecision: [{ Flow: [] }, { Flow: [] }] },
+    { [step("BinaryDecision", {}, "Gateway_BinaryDecision")]: [{ Flow: [] }, { Flow: [] }] },
+    { [step("CaseDecision", {}, "Gateway_CaseDecision")]: [{ Flow: [] }, { Flow: [] }] },
   ];
-  nodeInfo.Gateway_BinaryDecision = { label: "BinaryDecision", concept: "BinaryDecision", mappingStatus: "mapped" };
-  nodeInfo.Gateway_CaseDecision = { label: "CaseDecision", concept: "CaseDecision", mappingStatus: "mapped" };
   return generatePadFlow("PAD action catalog", { tree: { Process: tree }, nodeInfo });
 }
 
-const INSTANCE_USE =/\b(?:BrowserInstance|Instance|Connection): (\w+)/;
+const INSTANCE_USE = /\b(?:BrowserInstance|Instance|Connection): (\w+)/;
 const INSTANCE_DEFINITION = /\b(?:BrowserInstance|Instance|Connection)=> (\w+)/;
 
 /**

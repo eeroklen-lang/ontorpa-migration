@@ -4,13 +4,17 @@ import { IProcessTreeNodeSource } from "../../interfaces/BotModelInterface";
  * Power Automate Desktop (PAD) actions for ontology operations, written in Robin, the text form
  * PAD uses when actions are copied out of or pasted into the flow designer.
  *
- * The action names follow PAD's Robin as copied from the designer, but they have not yet been
- * validated by pasting into PAD (`npm run pad:catalog`, see M6 in docs/PLAN.md). Operations
- * without a confident PAD equivalent are left out on purpose: the linker emits a TODO comment
- * for them, and the migration report counts them as "ontology-only". PAD has native actions for
- * some of them, whose Robin still has to be copied from the designer: CheckElement (wait for or
- * check a UI element), MaximizeWindow, BrowserExtractTable, the data table operations other than
- * TableGetRowItem, PathExists (If file/folder exists), HttpRequest and SmtpSendEmail.
+ * Action ids and arguments follow the PAD Robin Action Knowledge Base (JoeG592/pad-robin-action-kb,
+ * CC BY 4.0, validated against PAD 2.73), whose golden examples were pasted into the PAD
+ * designer without errors; a test checks every generated action against the KB entries in
+ * test/fixtures/pad-robin-actions.json. `npm run pad:catalog` prints every action as one flow,
+ * to paste into PAD (see M6 in docs/PLAN.md). Operations without a PAD action are left out: the
+ * linker emits a TODO comment for them, and the migration report counts them as "ontology-only".
+ * These are ExcelExportPDF (PAD's Save As has no PDF format), ExcelFormatAsTable, the Word and
+ * G Suite operations, and the triggers; ParallelSplit runs its branches one after another.
+ *
+ * PAD tests for files, folders and UI elements are conditions (IF ... THEN) or waits (WAIT ...)
+ * rather than actions with a result, so those templates set a variable in an IF block.
  */
 
 /** What a template gets to fill in its parameters. */
@@ -89,56 +93,61 @@ const padActions: Record<string, PadTemplate> = {
     );
   },
   BrowserNavigate: (step) => [
-    todo(step, "check the direction (back, forward or reload)"),
-    "WebAutomation.GoToWebPage.GoBack BrowserInstance: Browser WaitForPageToLoadTimeout: 60",
+    todo(step, "check the direction (NavigateBack, NavigateForward or ReloadWebPage)"),
+    "WebAutomation.GoToWebPage.NavigateBack BrowserInstance: Browser WaitForPageToLoadTimeout: 60",
   ],
   BrowserClose: () => ["WebAutomation.CloseWebBrowser BrowserInstance: Browser"],
   BrowserClickButton: (step) =>
     withHints(
       step,
       [ELEMENT_HINT],
-      `WebAutomation.Click.Click BrowserInstance: Browser Control: ${UI_ELEMENT} WaitForPageToLoadTimeout: 60 MouseButton: WebAutomation.MouseClickType.LeftClick ClickType: WebAutomation.ClickType.SingleClick HoverMouseOverElement: True`
+      `WebAutomation.Click.Click BrowserInstance: Browser Control: ${UI_ELEMENT} WaitForPageToLoadTimeout: 60 ClickType: WebAutomation.ClickType.LeftClick MousePositionRelativeToElement: WebAutomation.RectangleEdgePoint.MiddleCenter OffsetX: 0 OffsetY: 0 MouseClick: True`
     ),
   BrowserInputText: (step) => {
     const value = valueOf(step);
     return withHints(
       step,
       [ELEMENT_HINT, ...value.hints],
-      `WebAutomation.PopulateTextField.PopulateTextField BrowserInstance: Browser Control: ${UI_ELEMENT} Text: ${value.value} EmulateTyping: True UnfocusAfterPopulate: False Mode: WebAutomation.PopulateTextMode.Replace TimeoutInSeconds: 60`
+      `WebAutomation.PopulateTextField.PopulateTextField BrowserInstance: Browser Control: ${UI_ELEMENT} Text: ${value.value} EmulateTyping: True UnfocusAfterPopulate: False Mode: WebAutomation.PopulateTextMode.Replace WaitForPageToLoadTimeout: 60`
     );
   },
   BrowserGetText: (step) =>
     withHints(
       step,
       [ELEMENT_HINT],
-      `WebAutomation.GetDetailsOfElement.GetAttribute BrowserInstance: Browser Control: ${UI_ELEMENT} AttributeName: ${text("Own Text")} AttributeValue=> ElementText`
+      `WebAutomation.GetDetailsOfElement BrowserInstance: Browser Control: ${UI_ELEMENT} AttributeName: ${text("Own Text")} AttributeValue=> ElementText`
     ),
   BrowserGetAttribute: (step) =>
     withHints(
       step,
       [ELEMENT_HINT, "set the attribute name"],
-      `WebAutomation.GetDetailsOfElement.GetAttribute BrowserInstance: Browser Control: ${UI_ELEMENT} AttributeName: ${text("TODO")} AttributeValue=> AttributeValue`
+      `WebAutomation.GetDetailsOfElement BrowserInstance: Browser Control: ${UI_ELEMENT} AttributeName: ${text("TODO")} AttributeValue=> AttributeValue`
     ),
   BrowserSelectCheckbox: (step) =>
     withHints(
       step,
       [ELEMENT_HINT],
-      `WebAutomation.SetCheckBoxState.SetCheckBoxState BrowserInstance: Browser Control: ${UI_ELEMENT} State: WebAutomation.CheckboxState.Checked`
+      `WebAutomation.SetCheckboxState.SetCheckboxState BrowserInstance: Browser Control: ${UI_ELEMENT} State: WebAutomation.CheckboxState.Checked WaitForPageToLoadTimeout: 60`
     ),
   BrowserSelectItem: (step) => {
     const value = valueOf(step);
     return withHints(
       step,
       [ELEMENT_HINT, ...value.hints],
-      `WebAutomation.SetDropDownListValue.SetDropDownListValueByName BrowserInstance: Browser Control: ${UI_ELEMENT} OptionNames: ${value.value} IsRegex: False`
+      `WebAutomation.SetDropDownListValue.SetDropDownListValueByName BrowserInstance: Browser Control: ${UI_ELEMENT} OptionNames: ${value.value} UseRegularExpression: False WaitForPageToLoadTimeout: 60`
     );
   },
   BrowserSelectItems: (step) =>
     withHints(
       step,
       [ELEMENT_HINT, "set the options"],
-      `WebAutomation.SetDropDownListValue.SetDropDownListValueByName BrowserInstance: Browser Control: ${UI_ELEMENT} OptionNames: ${text("TODO")} IsRegex: False`
+      `WebAutomation.SetDropDownListValue.SetDropDownListValueByName BrowserInstance: Browser Control: ${UI_ELEMENT} OptionNames: ${text("TODO")} UseRegularExpression: False WaitForPageToLoadTimeout: 60`
     ),
+  BrowserExtractTable: (step) => [
+    todo(step, "record the columns to extract with PAD's live web helper and set the table's CSS selector"),
+    "Variables.CreateNewDatatable InputTable: { } DataTable=> ExtractionParameters",
+    `WebAutomation.ExtractData.ExtractTable BrowserInstance: Browser Control: ${text("TODO")} ExtractionParameters: ExtractionParameters PostProcessData: False TimeoutInSeconds: 60 ExtractedData=> DataFromWebPage`,
+  ],
 
   // Excel
   ExcelOpen: () => ["Excel.LaunchExcel.LaunchUnderExistingProcess Visible: True Instance=> ExcelInstance"],
@@ -155,7 +164,7 @@ const padActions: Record<string, PadTemplate> = {
     withHints(
       step,
       ["set the cell"],
-      `Excel.ReadFromExcel.ReadCell Instance: ExcelInstance StartColumn: ${text("A")} StartRow: 1 ReadAsText: False CellValue=> ExcelCellValue`
+      `Excel.ReadFromExcel.ReadCell Instance: ExcelInstance StartColumn: ${text("A")} StartRow: 1 GetCellContentsMode: Excel.GetCellContentsMode.TypedValues CellValue=> ExcelCellValue`
     ),
   ExcelWriteCellValue: (step) => {
     const value = valueOf(step);
@@ -166,7 +175,7 @@ const padActions: Record<string, PadTemplate> = {
     );
   },
   ExcelReadRange: () => [
-    "Excel.ReadFromExcel.ReadAllCells Instance: ExcelInstance ReadAsText: False FirstLineIsHeader: True RangeValue=> ExcelData",
+    "Excel.ReadFromExcel.ReadAllCells Instance: ExcelInstance GetCellContentsMode: Excel.GetCellContentsMode.TypedValues FirstLineIsHeader: True RangeValue=> ExcelData",
   ],
   ExcelWriteRange: (step) => [
     todo(step, "check the table variable and the start cell"),
@@ -174,9 +183,15 @@ const padActions: Record<string, PadTemplate> = {
   ],
   ExcelCopyRange: (step) => [
     todo(step, "set the source range and the destination cell"),
-    "Excel.CopyCellsFromExcel.CopyCells Instance: ExcelInstance StartColumn: 1 StartRow: 1 EndColumn: 1 EndRow: 1",
-    "Excel.PasteCellsToExcel.PasteToCell Instance: ExcelInstance Column: 1 Row: 1",
+    `Excel.CopyCellsFromExcel.CopyCells Instance: ExcelInstance StartColumn: ${text("A")} StartRow: 1 EndColumn: ${text("A")} EndRow: 1`,
+    `Excel.PasteCellsToExcel.PasteAt Instance: ExcelInstance Column: ${text("A")} Row: 1`,
   ],
+  ExcelFilterRange: (step) =>
+    withHints(
+      step,
+      ["set the column and the values to keep"],
+      `Excel.FilterCellsFromExcel.FilterSimpleWorksheet Instance: ExcelInstance Column: ${text("A")} SimpleFilterValues: [${text("TODO")}]`
+    ),
   ExcelInsertSheet: (step) =>
     withHints(
       step,
@@ -187,7 +202,7 @@ const padActions: Record<string, PadTemplate> = {
     withHints(
       step,
       ["set the sheet names"],
-      `Excel.RenameWorksheet.ByName Instance: ExcelInstance Name: ${text("TODO")} NewName: ${text("TODO")}`
+      `Excel.RenameWorksheet.RenameWorksheetWithName Instance: ExcelInstance Name: ${text("TODO")} NewName: ${text("TODO")}`
     ),
   ExcelSaveWorkbook: () => ["Excel.SaveExcel.Save Instance: ExcelInstance"],
   ExcelClose: () => ["Excel.CloseExcel.Close Instance: ExcelInstance"],
@@ -201,6 +216,19 @@ const padActions: Record<string, PadTemplate> = {
       ["set the account and folder"],
       `Outlook.RetrieveEmailMessages.RetrieveEmails Instance: OutlookInstance Account: ${text("TODO")} MailFolder: ${text("Inbox")} EmailsToRetrieve: Outlook.RetrieveMessagesMode.All MarkAsRead: False ReadBodyAsHtml: False Messages=> RetrievedEmails`
     ),
+  // PAD saves the attachments while retrieving the emails; UiPath saves those of one email
+  OutlookSaveAttachments: (step) =>
+    withHints(
+      step,
+      ["set the account, the folder to save into and which emails to retrieve"],
+      `Outlook.RetrieveEmailMessages.RetrieveEmailsAndSaveAttachments Instance: OutlookInstance Account: ${text("TODO")} MailFolder: ${text("Inbox")} EmailsToRetrieve: Outlook.RetrieveMessagesMode.All MarkAsRead: False ReadBodyAsHtml: False SaveAttachmentsInto: ${text("TODO")} Messages=> RetrievedEmails`
+    ),
+  OutlookDeleteEmail: (step) =>
+    withHints(
+      step,
+      ["set the account and the emails to delete"],
+      `Outlook.ProcessEmailMessages.DeleteEmails Instance: OutlookInstance Account: ${text("TODO")} EmailsToProcess: RetrievedEmails`
+    ),
   OutlookSendEmail: (step) =>
     withHints(
       step,
@@ -213,14 +241,14 @@ const padActions: Record<string, PadTemplate> = {
     withHints(
       step,
       [ELEMENT_HINT],
-      `UIAutomation.Click Element: ${UI_ELEMENT} ClickType: UIAutomation.ClickType.LeftClick MousePositionRelativeToElement: UIAutomation.RectangleEdgePoint.MiddleCenter OffsetX: 0 OffsetY: 0`
+      `UIAutomation.Click.Click Element: ${UI_ELEMENT} ClickType: UIAutomation.ClickType.LeftClick MousePositionRelativeToElement: UIAutomation.RectangleEdgePoint.MiddleCenter OffsetX: 0 OffsetY: 0`
     ),
   TypeIntoElement: (step) => {
     const value = valueOf(step);
     return withHints(
       step,
       [ELEMENT_HINT, ...value.hints],
-      `UIAutomation.PopulateTextField TextField: ${UI_ELEMENT} Text: ${value.value} Mode: UIAutomation.PopulateTextMode.Replace ClickType: UIAutomation.PopulateMouseClickType.SingleClick`
+      `UIAutomation.PopulateTextField.PopulateTextField TextField: ${UI_ELEMENT} Text: ${value.value} Mode: UIAutomation.PopulateTextMode.Replace ClickType: UIAutomation.PopulateMouseClickType.SingleClick`
     );
   },
   PressKeys: (step) =>
@@ -228,6 +256,14 @@ const padActions: Record<string, PadTemplate> = {
       step,
       ["set the keys, e.g. {Control}({C})"],
       `MouseAndKeyboard.SendKeys.FocusAndSendKeys TextToSend: ${text("TODO")} DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: False`
+    ),
+  // In a browser the element is on the page, elsewhere in a window
+  CheckElement: (step) => checkElement(step),
+  MaximizeWindow: (step) =>
+    withHints(
+      step,
+      ["re-capture the window"],
+      "UIAutomation.SetWindowState.SetState State: UIAutomation.WindowState.Maximized Window: appmask['TODO']"
     ),
 
   // Files and text
@@ -279,6 +315,13 @@ const padActions: Record<string, PadTemplate> = {
     );
   },
   CreateFolder: (step) => createFolder(step),
+  PathExists: (step) => pathExists(step),
+  StringHash: (step) =>
+    withHints(
+      step,
+      ["set the text and check the algorithm"],
+      `Cryptography.HashText HashAlgorithm: Cryptography.HashAlgorithm.SHA256 Encoding: Cryptography.EncryptionEncoding.Unicode TextToHash: ${text("TODO")} HashedText=> HashedText`
+    ),
   StringTrim: (step) =>
     withHints(
       step,
@@ -288,6 +331,34 @@ const padActions: Record<string, PadTemplate> = {
 
   // Variables, data tables, lists and JSON
   SetVariable: (step) => setVariable(step),
+  TableCreate: (step) => [
+    todo(step, "set the columns"),
+    "Variables.CreateNewDatatable InputTable: { } DataTable=> DataTable",
+  ],
+  TableAddRow: (step) => [
+    todo(step, "set the row's values and check the table variable"),
+    `SET NewRow TO [${text("TODO")}]`,
+    "Variables.AddRowToDataTable.AppendRowToDataTable DataTable: DataTable RowToAdd: NewRow",
+  ],
+  TableAddColumn: (step) =>
+    withHints(
+      step,
+      ["set the column name and check the table variable"],
+      `Variables.AddColumnToDataTable.AppendColumnToDataTable DataTable: DataTable ColumnName: ${text("TODO")}`
+    ),
+  TableFilter: (step) => [
+    todo(step, "add the filter rules in the action and check the table variable"),
+    "Variables.CreateNewDatatable InputTable: { } DataTable=> FilterRules",
+    "Variables.FilterDataTable DataTable: DataTable FilterParameters: FilterRules MatchCase: True FilteredDataTable=> FilteredDataTable",
+  ],
+  TableLookup: (step) =>
+    withHints(
+      step,
+      ["set the column and the value to look up, then read the wanted column of the first match"],
+      `Variables.FindOrReplaceInDataTable.FindItemInDataTableByColumnIndex DataTable: DataTable ColumnNameOrIndex: ${text("TODO")} ValueToFind: ${text("TODO")} AllMatches: False MatchCase: False MatchEntireCellContents: True DataTableMatches=> DataTableMatches`
+    ),
+  TableClear: (step) =>
+    withHints(step, ["check the table variable"], "Variables.ClearDataTable DataTable: DataTable"),
   TableGetRowItem: (step) => [
     todo(step, "read the column from the row, e.g. %CurrentItem['Name']%"),
     `SET RowItem TO ${text("TODO")}`,
@@ -298,7 +369,7 @@ const padActions: Record<string, PadTemplate> = {
     withHints(
       step,
       ["set the text, the pattern and the replacement"],
-      `Text.Replace Text: ${text("TODO")} TextToFind: ${text("TODO")} IsRegEx: True IgnoreCase: False ReplaceWith: ${text("TODO")} ActivateEscapeSequences: False Result=> Replaced`
+      `Text.Replace.ReplaceTextWithRegex Text: ${text("TODO")} TextToFind: ${text("TODO")} ReplaceWith: ${text("TODO")} IgnoreCase: False ActivateEscapeSequences: False Result=> Replaced`
     ),
   JsonParse: (step) =>
     withHints(
@@ -309,12 +380,28 @@ const padActions: Record<string, PadTemplate> = {
 
   // Databases
   DatabaseConnect: (step) =>
-    withHints(step, ["set the connection string"], `Database.Connect ConnectionString: ${text("TODO")} Connection=> SQLConnection`),
+    withHints(step, ["set the connection string"], `Database.Connect.Connect ConnectionString: ${text("TODO")} Connection=> SQLConnection`),
   DatabaseRunQuery: (step) =>
     withHints(
       step,
       ["set the SQL statement"],
       `Database.ExecuteSqlStatement.Execute Connection: SQLConnection Statement: ${text("TODO")} Timeout: 30 Result=> QueryResult`
+    ),
+
+  // Web services and mail over SMTP
+  HttpRequest: (step) => {
+    const url = targetOf(step, "URL");
+    return withHints(
+      step,
+      [...url.hints, "check the method, headers and body"],
+      `Web.InvokeWebService.InvokeWebService Url: ${url.value} Method: Web.Method.Get Accept: ${text("application/json")} ContentType: ${text("application/json")} ConnectionTimeout: 30 FollowRedirection: True ClearCookies: False FailOnErrorStatus: False EncodeRequestBody: True UserAgent: ${text(USER_AGENT)} Encoding: Web.Encoding.AutoDetect AcceptUntrustedCertificates: False TrimRequestBody: True ResponseHeaders=> WebServiceResponseHeaders Response=> WebServiceResponse StatusCode=> StatusCode`
+    );
+  },
+  SmtpSendEmail: (step) =>
+    withHints(
+      step,
+      ["set the SMTP server, sender, recipients, subject and body"],
+      `Email.SendEmail.Send SMTPServer: ${text("TODO")} Port: 25 EnableSSL: False AcceptUntrustedCertificates: False SendFrom: ${text("TODO")} SendTo: ${text("TODO")} Subject: ${text("TODO")} Body: ${text("TODO")} IsBodyHtml: False`
     ),
 
   // System: processes, waiting, dialogs and loops
@@ -347,6 +434,57 @@ const padActions: Record<string, PadTemplate> = {
     ),
   ExitLoop: () => ["EXIT LOOP"],
 };
+
+/** PAD's default user agent for Invoke web service. */
+const USER_AGENT = "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.21) Gecko/20100312 Firefox/3.6";
+
+const INDENT = "    ";
+
+/** Sets a variable to whether a PAD condition holds, for UiPath activities that return a Boolean. */
+function conditionToVariable(variable: string, condition: string): string[] {
+  return [`SET ${variable} TO False`, `IF (${condition}) THEN`, `${INDENT}SET ${variable} TO True`, "END"];
+}
+
+/** UiPath's wait activities wait for the element; the others check whether it is there. */
+function checkElement(step: PadStep): string[] {
+  const inBrowser = step.source?.context === "browser";
+  const waits = /^(Wait|NCheckState)/.test(step.source?.activityType || "");
+  if (waits) {
+    return withHints(
+      step,
+      [ELEMENT_HINT],
+      inBrowser
+        ? `WAIT (WebAutomation.WaitForWebPageContent.WebPageToContainElement BrowserInstance: Browser Control: ${UI_ELEMENT})`
+        : `WAIT (UIAutomation.WaitForWindowContent.WindowToContainElement Element: ${UI_ELEMENT})`
+    );
+  }
+  return [
+    todo(step, `${ELEMENT_HINT}; use %ElementExists% where UiPath used the result`),
+    ...conditionToVariable(
+      "ElementExists",
+      inBrowser
+        ? `WebAutomation.IfWebPageContains.WebPageContainsElement BrowserInstance: Browser Control: ${UI_ELEMENT}`
+        : `UIAutomation.IfWindowContains.WindowContainsElement InstantCheck: False Element: ${UI_ELEMENT}`
+    ),
+  ];
+}
+
+/** File and folder checks are PAD conditions; UiPath's Path Exists can test either. */
+function pathExists(step: PadStep): string[] {
+  const folder = step.source?.activityType === "FolderExistsX";
+  const path = targetOf(step, folder ? "folder path" : "file path");
+  const hints = [...path.hints, "use %PathExists% where UiPath used the result"];
+  if (step.source?.activityType === "PathExists") {
+    hints.push("for a folder, use Folder.IfFolderExists.Exists Path:");
+  }
+  return [
+    todo(step, hints.join("; ")),
+    ...conditionToVariable(
+      "PathExists",
+      folder ? `Folder.IfFolderExists.Exists Path: ${path.value}` : `File.IfFile.Exists File: ${path.value}`
+    ),
+  ];
+}
 
 /** PAD creates a folder from its parent folder and its name, so a literal path is split. */
 function createFolder(step: PadStep): string[] {

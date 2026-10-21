@@ -83,7 +83,7 @@ describe("migrationReportFor", () => {
         tree: { Process: [{ Flow: ["Task_1", "Task_2"] }] },
         nodeInfo: {
           Task_1: { label: "Open", concept: "BrowserOpenURL" },
-          Task_2: { label: "Hash", concept: "StringHash" },
+          Task_2: { label: "Export", concept: "ExcelExportPDF" },
         },
       }),
     });

@@ -14,6 +14,9 @@ Pooled: all steps of all bots together. Median: over bots with steps.
 | 2 | 2026-10-21 | dev (public) | 40 | 4,686 | 87.8 % | 85.6 % | 80.7 % | 76.7 % |
 | 2 | | eval (client) | – | – | pending | | | |
 | 2 | 2026-10-21 | templates | 11 | 33 | 93.9 % | 100 % | 78.8 % | 75 % |
+| 2b | 2026-10-21 | dev (public) | 40 | 4,686 | 87.8 % | 85.6 % | 87.7 % | 85.6 % |
+| 2b | | eval (client) | – | – | pending | | | |
+| 2b | 2026-10-21 | templates | 11 | 33 | 93.9 % | 100 % | 90.9 % | 91.7 % |
 
 ## Round 0: baseline
 
@@ -57,3 +60,21 @@ PAD coverage is practically the same as ontology coverage, so the gap is almost 
   - 334 ontology-only steps (data tables, element checks, PathExists, HTTP, SMTP).
   - 170 manual steps.
 - The numbers are circular, because the extensions come from the same bots. The eval set's change is the evidence that counts.
+
+## Round 2b: PAD actions checked in PAD
+
+No mapping changes, so ontology coverage is unchanged. This round makes the PAD actions correct and complete.
+
+**First paste.** The output of `npm run pad:catalog` (every action the exporter generates) was pasted into the PAD designer on Windows. PAD reported 18 errors:
+- 8 wrong action ids, e.g. `WebAutomation.GetDetailsOfElement.GetAttribute`, `Excel.RenameWorksheet.ByName`, `UIAutomation.Click` and `Text.Replace`
+- 6 unknown arguments, e.g. `ReadAsText`, `IsRegex`, `MouseButton` and `TimeoutInSeconds`
+- 4 follow-on errors: a placeholder UI element, and variables that were never defined because the action that defines them had failed
+
+**Fixes.** The actions were corrected from the [PAD Robin Action Knowledge Base](https://github.com/JoeG592/pad-robin-action-kb) (CC BY 4.0, validated against PAD 2.73). For each of the failing actions, the KB agreed with the error PAD gave. The same source gave PAD actions for:
+- the 12 round 2 operations that were ontology-only (data tables, element checks and waits, PathExists, HTTP, SMTP, Extract table, Maximize window)
+- 4 older ones: OutlookSaveAttachments, OutlookDeleteEmail, ExcelFilterRange and StringHash
+
+PAD tests for files, folders and UI elements are conditions or waits, so those exports set a variable in an `IF` block. A test now checks every catalog line against the KB entries kept in `backend/test/fixtures/pad-robin-actions.json`; on the first catalog it catches all of PAD's errors. The second paste of the corrected catalog is still to do.
+
+Still without a PAD action: ExcelExportPDF (PAD's Save As has no PDF format), ExcelFormatAsTable, the Word, G Suite and trigger operations, and ParallelSplit.
+
