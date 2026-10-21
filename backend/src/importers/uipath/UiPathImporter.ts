@@ -28,9 +28,12 @@ export interface ImportNote {
 }
 
 export interface REFrameworkInfo {
-  processFile?: string;
-  initFile?: string;
-  closeFile?: string;
+  /** Workflows the Initialization state invokes besides the framework's own, e.g. InitAllApplications. */
+  initFiles: string[];
+  /** Workflows the Process Transaction state invokes: the business logic, run once per transaction. */
+  processFiles: string[];
+  /** Workflows the End Process state invokes besides the framework's own, e.g. CloseAllApplications. */
+  closeFiles: string[];
   /** Config.xlsx / Config.json files (settings, assets and queue names). */
   configFiles: string[];
   /** Framework workflows that map to the Power Automate work-queue pattern instead of being imported. */
@@ -71,6 +74,10 @@ const REFRAMEWORK_STATES = [
   "Process Transaction",
   "End Process",
 ];
+
+/** REFramework's own workflows (settings, queue handling, retries, cleanup), also when renamed with a prefix. */
+const REFRAMEWORK_PLUMBING =
+  /(^|[/\s._-])(InitAllSettings|KillAllProcesses|GetTransactionData|SetTransactionStatus|RetryCurrentTransaction|TakeScreenshot)\.xaml$/i;
 
 // Elements that hold data, not activities, when they appear as element children.
 const DATA_ELEMENTS = new Set([
@@ -235,17 +242,32 @@ class UiPathImporter {
    * work-queue pattern and is listed in the project info instead of being imported.
    */
   private importREFramework(main: string, mainRoot: XamlNode): TreeItem[] {
-    const invoked = findAll(mainRoot, (n) => n.name === "InvokeWorkflowFile")
-      .map((n) => getArgument(n, "WorkflowFileName"))
-      .filter((arg) => arg && arg.language === "Literal")
-      .map((arg) => normalizePath(arg!.text));
-    const byName = (name: string) =>
-      invoked.find((file) => path.posix.basename(file).toLowerCase() === name.toLowerCase()) ??
-      [`Framework/${name}`, name].find((file) => file in this.files);
+    const literalInvokes = (nodes: XamlNode[]) =>
+      nodes
+        .flatMap((node) => findAll(node, (n) => n.name === "InvokeWorkflowFile"))
+        .map((n) => getArgument(n, "WorkflowFileName"))
+        .filter((arg) => arg && arg.language === "Literal")
+        .map((arg) => normalizePath(arg!.text));
+    const invoked = literalInvokes([mainRoot]);
+    // Prefer what each state invokes; fall back to the template's file names (also with a prefix,
+    // e.g. "10.e Process.xaml") for projects without the standard states.
+    const states = findAll(mainRoot, (n) => n.name === "State");
+    const invokedIn = (stateName: string, fileName: string): string[] => {
+      const state = states.find((s) => s.displayName === stateName);
+      if (state) {
+        const files = literalInvokes([...(state.slots.Entry || []), ...(state.slots.Exit || [])]);
+        return Array.from(new Set(files)).filter((file) => !REFRAMEWORK_PLUMBING.test(file));
+      }
+      const named = new RegExp(`(^|[\\s._-])${fileName.replace(".", "\\.")}$`, "i");
+      const file =
+        invoked.find((f) => named.test(path.posix.basename(f))) ??
+        [`Framework/${fileName}`, fileName].find((f) => f in this.files);
+      return file ? [file] : [];
+    };
 
-    const processFile = byName("Process.xaml");
-    const initFile = byName("InitAllApplications.xaml");
-    const closeFile = byName("CloseAllApplications.xaml");
+    const initFiles = invokedIn("Initialization", "InitAllApplications.xaml");
+    const processFiles = invokedIn("Process Transaction", "Process.xaml");
+    const closeFiles = invokedIn("End Process", "CloseAllApplications.xaml");
 
     const configFiles = Object.keys(this.files).filter((file) =>
       /(^|\/)Config\.(xlsx|json)$/i.test(file)
@@ -254,34 +276,30 @@ class UiPathImporter {
       .map((n) => n.text && normalizePath(n.text))
       .forEach((file) => file && !configFiles.includes(file) && configFiles.push(file));
 
-    const imported = new Set([main, processFile, initFile, closeFile]);
+    const imported = new Set([main, ...initFiles, ...processFiles, ...closeFiles]);
     this.info.reframework = {
-      processFile,
-      initFile,
-      closeFile,
+      initFiles,
+      processFiles,
+      closeFiles,
       configFiles,
       frameworkFiles: this.info.workflowFiles.filter(
-        (file) => file.startsWith("Framework/") && !imported.has(file)
+        (file) =>
+          (file.startsWith("Framework/") || REFRAMEWORK_PLUMBING.test(file)) && !imported.has(file)
       ),
     };
     this.info.importedFiles.push(main);
 
     const scope: Scope = { file: main, stack: [main] };
-    const items: TreeItem[] = [];
-    if (initFile) {
-      items.push(...this.convertFile(initFile, scope));
-    }
-    const processItems = processFile ? this.convertFile(processFile, scope) : [];
+    const convertAll = (files: string[]) => files.flatMap((file) => this.convertFile(file, scope));
+    const items: TreeItem[] = convertAll(initFiles);
     const loopId = this.addNode("Loop", "Process each transaction", "", "structural", {
       vendor: "UiPath",
       activityType: "REFramework.TransactionLoop",
       file: main,
       reason: "REFramework transaction loop: maps to a Power Automate work queue",
     });
-    items.push({ [loopId]: [asBranch(processItems)] });
-    if (closeFile) {
-      items.push(...this.convertFile(closeFile, scope));
-    }
+    items.push({ [loopId]: [asBranch(convertAll(processFiles))] });
+    items.push(...convertAll(closeFiles));
     return items;
   }
 

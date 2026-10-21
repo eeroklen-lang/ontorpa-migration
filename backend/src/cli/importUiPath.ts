@@ -1,11 +1,14 @@
 import fs from "fs";
 import path from "path";
+import { buildGapReport } from "../analysis/gapReport";
 import { buildMigrationReport } from "../analysis/migrationReport";
 import { migrationTargets } from "../analysis/migrationTargets";
 import { generatePadFlow } from "../botLinkers/powerAutomateDesktopLinker/PowerAutomateDesktopLinker";
 import { generateBpmn } from "../bpmn/bpmnGenerator";
 import { importProject } from "../importers/uipath/UiPathImporter";
 import {
+  gapsCsv,
+  gapsMarkdown,
   portfolioCsv,
   portfolioMarkdown,
   PortfolioRow,
@@ -16,12 +19,13 @@ import {
 const USAGE = `Usage: npm run import:uipath -- [--summary] [--pad] [--out <dir>] <folder>...
 
 Imports every UiPath project found in the folders (a folder with project.json or Main.xaml),
-prints its process tree and migration report, and ends with a portfolio table.
+prints its process tree and migration report, and ends with a portfolio table and the
+portfolio's mapping gaps (unmapped activities, operations without a PAD action, manual work).
 
-  --summary     print only the portfolio table
+  --summary     print only the portfolio table and the gaps
   --pad         also print the Power Automate Desktop skeleton of each bot
   --out <dir>   also write <bot>.json (import result + report), <bot>.pad.txt,
-                <bot>.bpmn (diagram), portfolio.md and portfolio.csv`;
+                <bot>.bpmn (diagram), portfolio.md, portfolio.csv, gaps.md and gaps.csv`;
 
 
 // Folders that never contain workflows: Studio metadata, git, dependencies
@@ -93,14 +97,19 @@ function main(args: string[]) {
     }
   }
 
+  const gaps = buildGapReport(rows.map((row) => row.report));
   if (rows.length > 0) {
     console.log(`\n=== Portfolio (${rows.length} ${rows.length === 1 ? "bot" : "bots"})\n`);
     console.log(portfolioMarkdown(rows));
+    console.log(`\n=== Gaps\n`);
+    console.log(gapsMarkdown(gaps));
   }
   if (outDir && rows.length > 0) {
     fs.writeFileSync(path.join(outDir, "portfolio.md"), portfolioMarkdown(rows) + "\n");
     fs.writeFileSync(path.join(outDir, "portfolio.csv"), portfolioCsv(rows) + "\n");
-    console.log(`\nWrote ${rows.length} bot reports and the portfolio table to ${outDir}`);
+    fs.writeFileSync(path.join(outDir, "gaps.md"), gapsMarkdown(gaps) + "\n");
+    fs.writeFileSync(path.join(outDir, "gaps.csv"), gapsCsv(gaps) + "\n");
+    console.log(`\nWrote ${rows.length} bot reports, the portfolio table and the gaps to ${outDir}`);
   }
 }
 

@@ -3,7 +3,7 @@ import { generateBpmn } from "../../src/bpmn/bpmnGenerator";
 import { importProject } from "../../src/importers/uipath/UiPathImporter";
 import { IProcessTree } from "../../src/interfaces/BotModelInterface";
 import { readDiagram } from "../contract/frontendParser";
-import { hasTemplates, templateFiles, templateProjects } from "../templates";
+import { hasSamples, sampleFiles, sampleProjects } from "../samples";
 import { SAMPLE_TREE } from "./sampleTree";
 
 /** Flow elements by id, from the process and every sub-process, with their container's id. */
@@ -55,9 +55,10 @@ async function expectWellDrawn(processTree: IProcessTree) {
     if (parent) {
       expect(inside(bounds, di[parent].bounds), `${id} inside ${parent}`).toBe(true);
     }
+    // Checked pairwise, so only assert on a hit: bots with a thousand steps would be slow otherwise
     for (const [otherId, other] of nodes) {
-      if (otherId !== id && other.parent === parent) {
-        expect(overlaps(bounds, di[otherId].bounds), `${id} overlaps ${otherId}`).toBe(false);
+      if (otherId !== id && other.parent === parent && overlaps(bounds, di[otherId].bounds)) {
+        expect.fail(`${id} overlaps ${otherId}`);
       }
     }
     if (element.$type === "bpmn:SubProcess") {
@@ -131,8 +132,8 @@ describe("generateBpmn", () => {
   });
 });
 
-describe.skipIf(!hasTemplates)("generateBpmn on UiPath Studio templates", () => {
-  it.each(templateProjects())("draws %s", async (project) => {
-    await expectWellDrawn(importProject(templateFiles(project)).processTree);
+describe.skipIf(!hasSamples)("generateBpmn on sample bots", () => {
+  it.each(sampleProjects())("draws %s", async (project) => {
+    await expectWellDrawn(importProject(sampleFiles(project)).processTree);
   });
 });

@@ -3,7 +3,7 @@ import { generateBpmn } from "../../src/bpmn/bpmnGenerator";
 import { importProject } from "../../src/importers/uipath/UiPathImporter";
 import { IProcessTree } from "../../src/interfaces/BotModelInterface";
 import { SAMPLE_TREE } from "../bpmn/sampleTree";
-import { hasTemplates, templateFiles, templateProjects } from "../templates";
+import { hasSamples, sampleFiles, sampleProjects } from "../samples";
 import { parseDiagram } from "./frontendParser";
 
 /** What the modeler's parser keeps of each node: label (the id if empty) and concept. */
@@ -44,8 +44,8 @@ describe("generated diagram, read back by the modeler's parser", () => {
   });
 });
 
-describe.skipIf(!hasTemplates)("generated diagrams of UiPath Studio templates", () => {
-  it.each(templateProjects())("give back the imported tree of %s", async (project) => {
-    await expectRoundTrip(importProject(templateFiles(project)).processTree);
+describe.skipIf(!hasSamples)("generated diagrams of sample bots", () => {
+  it.each(sampleProjects())("give back the imported tree of %s", async (project) => {
+    await expectRoundTrip(importProject(sampleFiles(project)).processTree);
   });
 });

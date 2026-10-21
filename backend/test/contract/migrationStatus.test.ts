@@ -8,7 +8,7 @@ import { buildMigrationReport } from "../../src/analysis/migrationReport";
 import { migrationTargets } from "../../src/analysis/migrationTargets";
 import { importProject } from "../../src/importers/uipath/UiPathImporter";
 import { IProcessTreeNodeInfo, MappingStatus } from "../../src/interfaces/BotModelInterface";
-import { hasTemplates, templateFiles, templateProjects } from "../templates";
+import { hasSamples, sampleFiles, sampleProjects } from "../samples";
 
 const imported = (label: string, concept: string, mappingStatus: MappingStatus): IProcessTreeNodeInfo => ({
   label,
@@ -115,8 +115,8 @@ describe("countSteps", () => {
     });
   });
 
-  it.skipIf(!hasTemplates).each(templateProjects())("counts %s like the migration report", (project) => {
-    const bot = importProject(templateFiles(project));
+  it.skipIf(!hasSamples).each(sampleProjects())("counts %s like the migration report", (project) => {
+    const bot = importProject(sampleFiles(project));
     const report = buildMigrationReport(bot, migrationTargets.pad);
     expect(countSteps(bot.processTree.nodeInfo, pad)).toEqual({ totals: report.totals, coverage: report.coverage });
   });

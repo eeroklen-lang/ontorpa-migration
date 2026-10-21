@@ -1,5 +1,3 @@
-import fs from "fs";
-import path from "path";
 import { describe, expect, it } from "vitest";
 import BotLinkerContext from "../../src/botLinkers/BotLinkerContext";
 import {
@@ -14,6 +12,7 @@ import {
 } from "../../src/interfaces/BotModelInterface";
 import { importProject } from "../../src/importers/uipath/UiPathImporter";
 import { isOntologyOperation } from "../../src/utils/ontologyIndex";
+import { hasSamples, sampleFiles, sampleProjects } from "../samples";
 
 const HEADER_LINES = 2;
 
@@ -244,32 +243,9 @@ describe("padStepLines", () => {
   });
 });
 
-// Real UiPath Studio templates, downloaded to the git-ignored samples/ folder.
-const templatesDir = path.resolve(__dirname, "../../../samples/uipath-studio-templates");
-
-function projectRoots(dir: string): string[] {
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-  if (entries.some((e) => e.name === "project.json" || e.name === "Main.xaml")) {
-    return [dir];
-  }
-  return entries
-    .filter((e) => e.isDirectory() && !e.name.startsWith("."))
-    .flatMap((e) => projectRoots(path.join(dir, e.name)));
-}
-
-describe.skipIf(!fs.existsSync(templatesDir))("generatePadFlow on UiPath Studio templates", () => {
-  const roots = fs.existsSync(templatesDir) ? projectRoots(templatesDir) : [];
-
-  it.each(roots.map((root) => path.relative(templatesDir, root)))("generates balanced blocks for %s", (relative) => {
-    const root = path.join(templatesDir, relative);
-    const files: Record<string, string> = {};
-    for (const file of fs.readdirSync(root, { recursive: true, encoding: "utf8" })) {
-      const full = path.join(root, file);
-      if (fs.statSync(full).isFile() && /\.(xaml|json)$/i.test(file)) {
-        files[file] = fs.readFileSync(full, "utf8");
-      }
-    }
-    const imported = importProject(files);
+describe.skipIf(!hasSamples)("generatePadFlow on sample bots", () => {
+  it.each(sampleProjects())("generates balanced blocks for %s", (project) => {
+    const imported = importProject(sampleFiles(project));
     const lines = generatePadFlow(imported.name, imported.processTree).split("\n").map((l) => l.trim());
     const opened = lines.filter((l) => /^(IF .* THEN|LOOP |SWITCH )/.test(l)).length;
     const closed = lines.filter((l) => l === "END").length;

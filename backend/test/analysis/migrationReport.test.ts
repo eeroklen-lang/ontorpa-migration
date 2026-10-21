@@ -87,6 +87,11 @@ describe("buildMigrationReport", () => {
     // BrowserNavigate and the two SetVariable steps are mapped to the ontology but not to this target
     expect(withTarget.totals.ontologyOnly).toBe(3);
     expect(withTarget.coverage.target).toBe(3 / 8);
+    expect(withTarget.ontologyOnlyOperations).toEqual([
+      { operation: "SetVariable", count: 2 },
+      { operation: "BrowserNavigate", count: 1 },
+    ]);
+    expect(report.ontologyOnlyOperations).toBeUndefined();
 
     const partial = buildMigrationReport(imported, { name: "PAD", operations: new Set(["WithBrowser"]) });
     expect(partial.totals.ontologyOnly).toBe(5);

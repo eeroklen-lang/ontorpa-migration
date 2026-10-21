@@ -1,5 +1,3 @@
-import fs from "fs";
-import path from "path";
 import { describe, expect, it } from "vitest";
 import {
   IProcessTreeNodeInfo,
@@ -8,6 +6,7 @@ import {
 import { importProject } from "../../../src/importers/uipath/UiPathImporter";
 import { mappedOperationIds } from "../../../src/importers/uipath/uipathActivityMapping";
 import { isOntologyOperation } from "../../../src/utils/ontologyIndex";
+import { hasSamples, hasTemplates, sampleFiles, sampleProjects, templateFiles } from "../../samples";
 
 const NAMESPACES = `
   xmlns="http://schemas.microsoft.com/netfx/2009/xaml/activities"
@@ -266,6 +265,51 @@ describe("importProject: application context", () => {
   });
 });
 
+describe("importProject: REFramework", () => {
+  const invoke = (file: string) => `<ui:InvokeWorkflowFile WorkflowFileName="${file}" />`;
+  const state = (name: string, entry: string, transitionAction = "") => `
+    <State DisplayName="${name}">
+      <State.Entry><Sequence>${entry}</Sequence></State.Entry>
+      <State.Transitions><Transition><Transition.Action>${transitionAction}</Transition.Action></Transition></State.Transitions>
+    </State>`;
+
+  it("imports what the states invoke besides the framework's own workflows, also when renamed", () => {
+    const { result, tree } = importMain(
+      `<StateMachine DisplayName="General Business Process">
+        ${state("Initialization", invoke("10. Framework\\10.a InitAllSettings.xaml") + invoke("AddQueue.xaml") + invoke("Framework\\InitAllApplications.xaml"))}
+        ${state("Get Transaction Data", invoke("10. Framework\\10.d GetTransactionData.xaml"))}
+        ${state(
+          "Process Transaction",
+          `<TryCatch><TryCatch.Try>${invoke("10. Framework\\10.e Process.xaml")}</TryCatch.Try></TryCatch>`,
+          invoke("10. Framework\\10.f SetTransactionStatus.xaml")
+        )}
+        ${state("End Process", invoke("Framework\\KillAllProcesses.xaml"))}
+      </StateMachine>`,
+      {
+        "AddQueue.xaml": xaml(`<ui:AddQueueItem DisplayName="Add item" />`),
+        "Framework/InitAllApplications.xaml": xaml(`<ui:NavigateTo DisplayName="Open portal" />`),
+        "10. Framework/10.a InitAllSettings.xaml": xaml(`<Assign DisplayName="Read config" />`),
+        "10. Framework/10.d GetTransactionData.xaml": xaml(`<ui:GetQueueItem />`),
+        "10. Framework/10.e Process.xaml": xaml(`<Assign DisplayName="Business logic" />`),
+        "10. Framework/10.f SetTransactionStatus.xaml": xaml(`<ui:SetTransactionStatus />`),
+        "Framework/KillAllProcesses.xaml": xaml(`<ui:KillProcess />`),
+      }
+    );
+    expect(result.source.reframework).toMatchObject({
+      initFiles: ["AddQueue.xaml", "Framework/InitAllApplications.xaml"],
+      processFiles: ["10. Framework/10.e Process.xaml"],
+      closeFiles: [],
+      frameworkFiles: [
+        "10. Framework/10.a InitAllSettings.xaml",
+        "10. Framework/10.d GetTransactionData.xaml",
+        "10. Framework/10.f SetTransactionStatus.xaml",
+        "Framework/KillAllProcesses.xaml",
+      ],
+    });
+    expect(tree).toBe("Process(Flow(?AddQueueItem, BrowserOpenURL, ?REFramework.TransactionLoop(SetVariable)))");
+  });
+});
+
 describe("importProject: project files", () => {
   it("reads project.json and strips a top-level folder from paths", () => {
     const result = importProject({
@@ -302,32 +346,17 @@ describe("uipathActivityMapping", () => {
   });
 });
 
-// Real UiPath Studio templates, downloaded to the git-ignored samples/ folder.
-const templatesDir = path.resolve(__dirname, "../../../../samples/uipath-studio-templates");
-
-function readProject(relativeDir: string): Record<string, string> {
-  const dir = path.join(templatesDir, relativeDir);
-  const files: Record<string, string> = {};
-  for (const file of fs.readdirSync(dir, { recursive: true, encoding: "utf8" })) {
-    const full = path.join(dir, file);
-    if (fs.statSync(full).isFile() && /\.(xaml|json)$/i.test(file)) {
-      files[file] = fs.readFileSync(full, "utf8");
-    }
-  }
-  return files;
-}
-
-describe.skipIf(!fs.existsSync(templatesDir))("importProject on UiPath Studio templates", () => {
+describe.skipIf(!hasTemplates)("importProject on UiPath Studio templates", () => {
   it.each([
     "REFramework/contentFiles/any/any/pt0/VisualBasic",
     "REFramework/contentFiles/any/any/pt3/CSharp",
     "REFramework/contentFiles/any/any/pt5/CSharp",
   ])("recognises REFramework in %s", (dir) => {
-    const result = importProject(readProject(dir));
+    const result = importProject(templateFiles(dir));
     expect(result.source.reframework).toMatchObject({
-      processFile: "Framework/Process.xaml",
-      initFile: "Framework/InitAllApplications.xaml",
-      closeFile: "Framework/CloseAllApplications.xaml",
+      processFiles: ["Framework/Process.xaml"],
+      initFiles: ["Framework/InitAllApplications.xaml"],
+      closeFiles: ["Framework/CloseAllApplications.xaml"],
     });
     expect(result.source.reframework?.frameworkFiles).toContain("Framework/GetTransactionData.xaml");
     expect(result.source.reframework?.configFiles.length).toBeGreaterThan(0);
@@ -336,7 +365,7 @@ describe.skipIf(!fs.existsSync(templatesDir))("importProject on UiPath Studio te
   });
 
   it("maps the Excel-to-website template's clicks to browser operations", () => {
-    const result = importProject(readProject("EnterExcelDataIntoWebsite/contentFiles/any/any/pt0/VisualBasic"));
+    const result = importProject(templateFiles("EnterExcelDataIntoWebsite/contentFiles/any/any/pt0/VisualBasic"));
     const tree = render(result.processTree.tree, result.processTree.nodeInfo);
     expect(tree).toBe(
       "Process(WithBrowser(Flow(BrowserOpenURL, BrowserNavigate, WithMicrosoftExcel(ForEachLoop(Flow(" +
@@ -346,8 +375,17 @@ describe.skipIf(!fs.existsSync(templatesDir))("importProject on UiPath Studio te
   });
 
   it("imports the Flowchart template with its loop back flagged", () => {
-    const result = importProject(readProject("TransactionalProcess/contentFiles/any/any/pt0/VisualBasic"));
+    const result = importProject(templateFiles("TransactionalProcess/contentFiles/any/any/pt0/VisualBasic"));
     const manual = Object.values(result.processTree.nodeInfo).filter((n) => n.mappingStatus === "manual");
     expect(manual.map((n) => n.label)).toEqual(["Flowchart loop back to Data Input"]);
+  });
+});
+
+describe.skipIf(!hasSamples)("importProject on sample bots", () => {
+  it.each(sampleProjects())("gives every node of %s a mapping status", (project) => {
+    const { processTree } = importProject(sampleFiles(project));
+    for (const info of Object.values(processTree.nodeInfo)) {
+      expect(["mapped", "unmapped", "manual", "structural"]).toContain(info.mappingStatus);
+    }
   });
 });
