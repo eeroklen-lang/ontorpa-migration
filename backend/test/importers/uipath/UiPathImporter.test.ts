@@ -13,6 +13,7 @@ const NAMESPACES = `
   xmlns:ui="http://schemas.uipath.com/workflow/activities"
   xmlns:uix="http://schemas.uipath.com/workflow/activities/uix"
   xmlns:ueab="clr-namespace:UiPath.Excel.Activities.Business;assembly=UiPath.Excel.Activities"
+  xmlns:bem="clr-namespace:BalaReva.Excel.Main;assembly=BalaReva.Excel.Activities"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"`;
 
 function xaml(body: string): string {
@@ -254,6 +255,63 @@ describe("importProject: application context", () => {
     expect([info.Activity_1.mappingStatus, info.Activity_1.source?.context]).toEqual(["structural", "sap"]);
     expect([info.Activity_2.mappingStatus, info.Activity_2.source?.context]).toEqual(["unmapped", "sap"]);
     expect(info.Activity_3.source?.context).toBeUndefined();
+  });
+
+  it("takes the context of UI activities outside any UI scope from their own selector", () => {
+    const classic = (selector: string) =>
+      `<ui:Click DisplayName="Click"><ui:Click.Target><ui:Target Selector="${selector}" /></ui:Click.Target></ui:Click>`;
+    const modern = `<uix:NClick DisplayName="Click"><uix:NClick.Target>
+      <uix:TargetAnchorable ScopeSelectorArgument="&lt;html app='chrome.exe' title='Portal' /&gt;" FullSelectorArgument="&lt;webctrl tag='BUTTON' /&gt;" />
+    </uix:NClick.Target></uix:NClick>`;
+    const { tree, nodes } = importMain(`<Sequence>
+      ${classic("&lt;html app='firefox.exe' /&gt;&lt;webctrl id='save' tag='BUTTON' /&gt;")}
+      ${classic("&lt;webctrl id='next' tag='A' /&gt;")}
+      ${classic("[String.Format(&quot;&lt;html app='chrome.exe' /&gt;&lt;webctrl aaname='{0}' /&gt;&quot;, name)]")}
+      ${modern}
+      ${classic("&lt;wnd app='iexplore.exe' cls='#32770' /&gt;&lt;wnd ctrlid='1' /&gt;")}
+      ${classic("&lt;wnd app='saplogon.exe' cls='SAP_FRONTEND_SESSION' /&gt;")}
+      ${classic("[savedSelector]")}
+      ${classic("{x:Null}")}
+    </Sequence>`);
+    expect(tree).toBe(
+      "Process(Flow(BrowserClickButton, BrowserClickButton, BrowserClickButton, BrowserClickButton, ?Click, ?Click, ?Click, ?Click))"
+    );
+    expect(nodes.map((n) => n.source?.context)).toEqual([
+      "browser",
+      "browser",
+      "browser",
+      "browser",
+      "desktop",
+      "sap",
+      undefined,
+      undefined,
+    ]);
+  });
+
+  it("lets an enclosing UI scope win over the activity's own selector", () => {
+    const { tree, nodes } = importMain(`
+      <ui:OpenApplication DisplayName="Open app" FileName="notepad.exe">
+        <ui:OpenApplication.Body><ActivityAction x:TypeArguments="x:Object">
+          <ui:Click DisplayName="Click"><ui:Click.Target><ui:Target Selector="&lt;html app='chrome.exe' /&gt;" /></ui:Click.Target></ui:Click>
+        </ActivityAction></ui:OpenApplication.Body>
+      </ui:OpenApplication>`);
+    expect(tree).toBe("Process(?OpenApplication(?Click))");
+    expect(nodes[1].source?.context).toBe("desktop");
+  });
+
+  it("maps classic file, text and Excel variants onto existing operations and drops highlights", () => {
+    const { tree, nodes } = importMain(`<Sequence>
+      <ui:Delete Path="old.txt" />
+      <ui:WriteTextFile FileName="out.txt" Text="done" />
+      <ui:Highlight />
+      <bem:ExcelScope FilePath="report.xlsx"><bem:ExcelScope.Body><ActivityAction x:TypeArguments="x:Object">
+        <ui:AppendRange SheetName="Sheet1" /><ui:ExcelCopyPasteRange />
+      </ActivityAction></bem:ExcelScope.Body></bem:ExcelScope>
+    </Sequence>`);
+    expect(tree).toBe(
+      "Process(Flow(DeleteFile, CreateTextFile, WithMicrosoftExcel(Flow(ExcelWriteRange, ExcelCopyRange))))"
+    );
+    expect(nodes[2].source).toMatchObject({ context: "excel", target: "report.xlsx" });
   });
 
   it("marks custom code and orchestration activities as manual", () => {

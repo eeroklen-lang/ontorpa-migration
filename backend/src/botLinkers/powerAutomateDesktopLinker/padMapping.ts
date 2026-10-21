@@ -208,10 +208,12 @@ const padActions: Record<string, PadTemplate> = {
   // Files and text
   CreateTextFile: (step) => {
     const path = targetOf(step, "file path");
+    // An empty file, unless the step writes text into it (UiPath Write Text File)
+    const value = step.source?.expression !== undefined ? valueOf(step) : { value: text(""), hints: [] };
     return withHints(
       step,
-      path.hints,
-      `File.WriteText File: ${path.value} TextToWrite: ${text("")} AppendNewLine: False IfFileExists: File.IfFileExists.Overwrite Encoding: File.FileEncoding.UTF8`
+      [...path.hints, ...value.hints],
+      `File.WriteText File: ${path.value} TextToWrite: ${value.value} AppendNewLine: False IfFileExists: File.IfFileExists.Overwrite Encoding: File.FileEncoding.UTF8`
     );
   },
   AppendPlainText: (step) => {

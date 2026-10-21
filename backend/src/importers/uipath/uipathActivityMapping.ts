@@ -64,6 +64,7 @@ const activityRules: Record<string, Rule> = {
   TypeInto: ui({ browser: "BrowserInputText" }),
   TypeSecureText: ui({ browser: "BrowserInputText" }),
   SetText: ui({ browser: "BrowserInputText" }),
+  NSetText: ui({ browser: "BrowserInputText" }),
   NGetText: ui({ browser: "BrowserGetText" }),
   GetValue: ui({ browser: "BrowserGetText" }),
   GetFullText: ui({ browser: "BrowserGetText" }),
@@ -80,6 +81,8 @@ const activityRules: Record<string, Rule> = {
   NavigateTo: mapped("BrowserOpenURL"),
   CloseTab: mapped("BrowserClose"),
   NCloseTab: mapped("BrowserClose"),
+  CloseApplication: ui({ browser: "BrowserClose" }),
+  CloseWindow: ui({ browser: "BrowserClose" }),
 
   // Excel, modern (…X) and classic
   ReadCellValueX: mapped("ExcelReadCellValue"),
@@ -98,7 +101,9 @@ const activityRules: Record<string, Rule> = {
   WriteRangeX: mapped("ExcelWriteRange"),
   ExcelWriteRange: mapped("ExcelWriteRange"),
   WriteRange: mapped("ExcelWriteRange"),
+  AppendRange: mapped("ExcelWriteRange"),
   CopyPasteRangeX: mapped("ExcelCopyRange"),
+  ExcelCopyPasteRange: mapped("ExcelCopyRange"),
   FilterX: mapped("ExcelFilterRange"),
   ExcelFilterTable: mapped("ExcelFilterRange"),
   CreateTableX: mapped("ExcelFormatAsTable"),
@@ -116,7 +121,9 @@ const activityRules: Record<string, Rule> = {
 
   // Files
   AppendLine: mapped("AppendPlainText"),
+  WriteTextFile: mapped("CreateTextFile"),
   DeleteFileX: mapped("DeleteFile"),
+  Delete: mapped("DeleteFile"),
 
   // Variables
   Assign: mapped("SetVariable"),
@@ -129,6 +136,8 @@ const activityRules: Record<string, Rule> = {
   CommentOut: ignore,
   AddLogFields: ignore,
   RemoveLogFields: ignore,
+  // Only marks an element on screen while debugging
+  Highlight: ignore,
 
   // Needs human redesign; out of scope for automatic migration
   InvokeCode: manual("Invoke Code: custom VB/C# code"),
@@ -162,6 +171,7 @@ const CLASSIC_UI_ACTIVITIES = new Set([
   "SendHotkey",
   "ExtractData",
   "ElementExists",
+  "UiElementExists",
   "FindElement",
   "WaitUiElementAppear",
   "WaitUiElementVanish",
@@ -178,6 +188,25 @@ export function isUiActivity(node: XamlNode): boolean {
     uiActivityTypes.has(node.name) ||
     CLASSIC_UI_ACTIVITIES.has(node.name)
   );
+}
+
+/**
+ * The application a UI activity outside any UI scope acts on, from its own selector: a web page
+ * (<html>, <webctrl>), SAP, or another desktop application (<wnd>, <ctrl>, …). Classic activities
+ * keep the selector in Target, modern ones in TargetAnchorable. Undefined without a selector, or
+ * when the selector is only a variable.
+ */
+export function uiContextOfSelector(node: XamlNode): AppContext | undefined {
+  const target = node.slots.Target?.[0];
+  const selectors = [
+    arg(node, "Selector"),
+    ...(target ? ["Selector", "ScopeSelectorArgument", "FullSelectorArgument"].map((p) => arg(target, p)) : []),
+  ];
+  const text = selectors.map((s) => s?.text || "").join(" ");
+  if (!/<\w+[\s/>]/.test(text)) {
+    return undefined;
+  }
+  return /<(html|webctrl)[\s/>]/i.test(text) ? "browser" : scopeForApplication(undefined, text).app;
 }
 
 /** Loop activities: collection loops map to ForEachLoop, condition loops to ConditionalLoop. */
@@ -309,10 +338,19 @@ export function scopeOf(node: XamlNode): ScopeInfo | undefined {
     case "SAPLogon":
     case "SAPLogin":
       return { app: "sap", kind: "ui" };
-    // Excel
+    // Excel; ExcelScope is a third-party scope that works like Excel Application Scope
     case "ExcelApplicationCard":
     case "ExcelApplicationScope":
-      return { app: "excel", kind: "api", container: "WithMicrosoftExcel", target: arg(node, "WorkbookPath") };
+    case "ExcelScope":
+      return {
+        app: "excel",
+        kind: "api",
+        container: "WithMicrosoftExcel",
+        target: arg(node, "WorkbookPath") ?? arg(node, "FilePath"),
+      };
+    // Modern Excel Process Scope: the Use Excel File cards inside it are the containers
+    case "ExcelProcessScopeX":
+      return { app: "excel", kind: "api" };
     // Mail
     case "OutlookApplicationCard":
     case "OutlookMailMessagesScope":
@@ -323,6 +361,7 @@ export function scopeOf(node: XamlNode): ScopeInfo | undefined {
     // Word
     case "WordApplicationScope":
     case "WordApplicationCard":
+    case "WordScope":
       return { app: "word", kind: "api", target: arg(node, "FilePath") };
     default:
       return undefined;

@@ -6,7 +6,14 @@ import {
   IProcessTreeStructure,
   MappingStatus,
 } from "../../interfaces/BotModelInterface";
-import { AppContext, isUiActivity, loopOperationOf, mapActivity, scopeOf } from "./uipathActivityMapping";
+import {
+  AppContext,
+  isUiActivity,
+  loopOperationOf,
+  mapActivity,
+  scopeOf,
+  uiContextOfSelector,
+} from "./uipathActivityMapping";
 import { getArgument, readXaml, XAML_NAMESPACE, XamlExpression, XamlNode } from "./xamlReader";
 
 type TreeItem = string | IProcessTreeStructure;
@@ -429,7 +436,12 @@ class UiPathImporter {
     return this.convertLeaf(node, scope);
   }
 
-  private convertLeaf(node: XamlNode, scope: Scope): TreeItem[] {
+  private convertLeaf(node: XamlNode, enclosing: Scope): TreeItem[] {
+    // A UI activity outside any UI scope (e.g. a classic Click with a full selector) acts on the
+    // application its own selector names
+    const selectorContext =
+      !enclosing.ui && isUiActivity(node) ? uiContextOfSelector(node) : undefined;
+    const scope = selectorContext ? { ...enclosing, ui: selectorContext } : enclosing;
     const result = mapActivity(node.name, { ui: scope.ui, api: scope.api });
     if (result.status === "ignore") {
       return [];

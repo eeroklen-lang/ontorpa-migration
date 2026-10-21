@@ -42,6 +42,18 @@ const uipath = (activityType: string, extra: object = {}) => ({
   ...extra,
 });
 
+/** A step whose action needs no application instance, for the control-flow tests. */
+const deleteStep: IProcessTreeNodeInfo = {
+  label: "Delete",
+  concept: "DeleteFile",
+  mappingStatus: "mapped",
+  source: uipath("DeleteFileX", { target: "old.txt", targetLanguage: "Literal" }),
+};
+const deleteLine = `File.Delete Files: ${text("old.txt")}`;
+
+const MISSING_BROWSER =
+  "# TODO: nothing launches %Browser% before this action; launch or attach to the application first";
+
 describe("generatePadFlow", () => {
   it("wraps container bodies in launch and close actions, using a literal URL", () => {
     const lines = body(
@@ -76,7 +88,22 @@ describe("generatePadFlow", () => {
     expect(lines[0]).toBe(
       '# TODO "Type name": re-capture the UI element; translate the value; UiPath uses row("Name")'
     );
-    expect(lines[1]).toContain(`Control: appmask['TODO']['TODO'] Text: ${text("TODO")}`);
+    expect(lines[1]).toBe(MISSING_BROWSER);
+    expect(lines[2]).toContain(`Control: appmask['TODO']['TODO'] Text: ${text("TODO")}`);
+  });
+
+  it("points out the first use of an application instance that nothing launches", () => {
+    const click: IProcessTreeNodeInfo = { label: "Click", concept: "BrowserClickButton", mappingStatus: "mapped" };
+    const lines = body(
+      tree(["Activity_1", { Gateway_1: ["Activity_1", "Activity_1"] }, { Activity_2: ["Activity_3"] }], {
+        Activity_1: click,
+        Gateway_1: { label: "Again?", concept: "BinaryDecision", mappingStatus: "mapped" },
+        Activity_2: { label: "Excel", concept: "WithMicrosoftExcel" },
+        Activity_3: { label: "Save", concept: "ExcelSaveWorkbook" },
+      })
+    );
+    expect(lines.filter((line) => line.includes("nothing launches"))).toEqual([MISSING_BROWSER]);
+    expect(lines.indexOf(MISSING_BROWSER)).toBe(1);
   });
 
   it("turns BinaryDecision into IF/ELSE with a declared placeholder condition", () => {
@@ -85,7 +112,7 @@ describe("generatePadFlow", () => {
       {
         Gateway_1: { label: "Has rows?", concept: "BinaryDecision", mappingStatus: "mapped", source: uipath("If", { expression: "rows.Count > 0" }) },
         Gateway_2: { label: "Valid?", concept: "BinaryDecision", mappingStatus: "mapped" },
-        Activity_1: { label: "Close", concept: "BrowserClose", mappingStatus: "mapped" },
+        Activity_1: deleteStep,
       }
     );
     expect(placeholders(processTree)).toEqual([
@@ -96,13 +123,13 @@ describe("generatePadFlow", () => {
     expect(body(processTree)).toEqual([
       '# TODO "Has rows?": translate the condition; UiPath uses rows.Count > 0',
       "IF Condition1 = True THEN",
-      "    WebAutomation.CloseWebBrowser BrowserInstance: Browser",
+      `    ${deleteLine}`,
       "END",
       '# TODO "Valid?": set the condition',
       "IF Condition2 = True THEN",
-      "    WebAutomation.CloseWebBrowser BrowserInstance: Browser",
+      `    ${deleteLine}`,
       "ELSE",
-      "    WebAutomation.CloseWebBrowser BrowserInstance: Browser",
+      `    ${deleteLine}`,
       "END",
     ]);
   });
@@ -113,10 +140,10 @@ describe("generatePadFlow", () => {
       {
         Gateway_1: { label: "Kind", concept: "CaseDecision", mappingStatus: "mapped", source: uipath("Switch", { expression: "kind" }) },
         Gateway_2: { label: "Both", concept: "ParallelSplit", mappingStatus: "mapped" },
-        Activity_1: { label: "Close", concept: "BrowserClose", mappingStatus: "mapped" },
+        Activity_1: deleteStep,
       }
     );
-    const close = "WebAutomation.CloseWebBrowser BrowserInstance: Browser";
+    const close = deleteLine;
     expect(body(processTree)).toEqual([
       '# TODO "Kind": set the case values; UiPath switches on kind',
       "SWITCH CaseValue1",
@@ -139,7 +166,7 @@ describe("generatePadFlow", () => {
     const processTree = tree([{ Loop_1: [{ Loop_2: ["Activity_1"] }] }], {
       Loop_1: { label: "Each row", concept: "ForEachLoop", mappingStatus: "mapped", source: uipath("ForEach", { expression: "rows" }) },
       Loop_2: { label: "Retry", concept: "ConditionalLoop", mappingStatus: "mapped" },
-      Activity_1: { label: "Close", concept: "BrowserClose", mappingStatus: "mapped" },
+      Activity_1: deleteStep,
     });
     expect(placeholders(processTree).slice(1)).toEqual([
       "Variables.CreateNewList List=> Collection1",
@@ -150,10 +177,26 @@ describe("generatePadFlow", () => {
       "LOOP FOREACH CurrentItem IN Collection1",
       '    # TODO "Retry": set the loop condition',
       "    LOOP WHILE (Condition1) = (True)",
-      "        WebAutomation.CloseWebBrowser BrowserInstance: Browser",
+      `        ${deleteLine}`,
       "    END",
       "END",
     ]);
+  });
+
+  it("writes the text of a Write Text File step, and creates an empty file otherwise", () => {
+    const lines = body(
+      tree(["Activity_1", "Activity_2"], {
+        Activity_1: {
+          label: "Write",
+          concept: "CreateTextFile",
+          mappingStatus: "mapped",
+          source: uipath("WriteTextFile", { target: "out.txt", targetLanguage: "Literal", expression: "done", expressionLanguage: "Literal" }),
+        },
+        Activity_2: { label: "Create", concept: "CreateTextFile", source: uipath("CreateFile", { target: "new.txt", targetLanguage: "Literal" }) },
+      })
+    );
+    expect(lines[0]).toContain(`File.WriteText File: ${text("out.txt")} TextToWrite: ${text("done")} `);
+    expect(lines[1]).toContain(`File.WriteText File: ${text("new.txt")} TextToWrite: ${text("")} `);
   });
 
   it("translates simple assignments and flags the rest", () => {
@@ -239,7 +282,8 @@ describe("padStepLines", () => {
     ["a manual step", { label: "Code", concept: "", mappingStatus: "manual", source: uipath("InvokeCode", { reason: "custom code" }) }],
     ["a modeled step", { label: "Trim", concept: "StringTrim" }],
   ] as [string, IProcessTreeNodeInfo][])("matches the flow's lines for %s", (_, info) => {
-    expect(padStepLines(info)).toEqual(body(tree(["Activity_1"], { Activity_1: info })));
+    const flow = body(tree(["Activity_1"], { Activity_1: info }));
+    expect(padStepLines(info)).toEqual(flow.filter((line) => line !== MISSING_BROWSER));
   });
 });
 

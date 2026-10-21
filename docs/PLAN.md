@@ -20,6 +20,7 @@ Tick boxes as work lands. Paths are relative to the repo root (`backend/…`, `f
 | M3: PAD skeleton exporter | Done (Robin names not yet validated in PAD) |
 | M4: API + UI integration | Done |
 | M5: Diagrams and migration workbench | Done |
+| M6: Growing the mapping rate | In progress (rounds 0 and 1a done; round 2 next) |
 | Verification | In progress (real bots, UI click-through, PAD on Windows) |
 
 ## Context
@@ -194,6 +195,29 @@ Front end:
 - Bots imported before M5 have no diagram: re-import them
 
 Checked with headless Chrome (DevTools protocol) against the dev servers, on imported templates: diagrams and colours in the modeler (TransactionalProcess, SaveOutlookAttachments, EnterExcelDataIntoWebsite); checklist numbers equal the report; correcting an operation (PAD 50 % → 100 %) and removing the manual Flowchart loop-back step, then saving, gives the expected review and PAD export; a loose task is listed; the inspector shows source and PAD lines; abstraction and metrics pages show the diagram, and abstraction aggregates the generated steps
+
+## M6: Growing the mapping rate
+
+The goal is to raise ontology and PAD coverage on bots that did not shape the mappings, so that the thesis can defend the numbers.
+- **Dev set:** public GitHub UiPath projects. Its gap census drives the mappings.
+- **Eval set:** the real client bots, held out. They are measured each round but never cited as evidence.
+
+Ontology operations and PAD actions grow in lockstep. Orchestrator queues, assets and credentials stay manual (#7, #8). Sets and selection are described in [`corpus/README.md`](corpus/README.md); the numbers are in [`coverage-history.md`](coverage-history.md).
+
+Decisions (2026-10-21):
+- Round 2 extends the ontology for activities seen at least 5 times in at least 3 dev bots.
+- SAP UI activities reuse the desktop UI operations; `sap` stays in the source context.
+- Each round is its own commit, so the eval set can be measured before and after it.
+
+- [x] Round 0: corpus and measurement
+  - [x] 40 public projects selected by fixed rules, pinned in `docs/corpus/public-corpus.json`, fetched by `scripts/fetch-public-corpus.sh` into `samples/public/`
+  - [x] Gap census: `buildGapReport` (`backend/src/analysis/gapReport.ts`); the CLI prints it and writes `gaps.md` / `gaps.csv`. Reports list `ontologyOnlyOperations`
+  - [x] Robustness over every bot in `samples/` (`backend/test/samples.ts`). This found and fixed the REFramework import, which lost business workflows that were renamed or invoked from extra states
+  - [x] Baseline: 68.4 % pooled on the dev set
+- [x] Round 1a: importer and mapping-table wins, without ontology changes. UI context from the activity's own selector, aliases onto existing operations, more scopes, `Highlight` ignored. 71.5 % pooled on the dev set. The PAD export flags actions on an application instance (`%Browser%`, …) that nothing launches
+- [ ] Round 2: ontology extensions and PAD actions for the 35 activity types over the threshold (DataTable, files and folders, desktop UI, wait and element exists, processes, dialogs, HTTP/JSON, SMTP, Break), documented in [`ontology-extensions.md`](ontology-extensions.md)
+- [ ] `npm run pad:catalog`: one Robin flow with every PAD template, to paste into PAD
+- [ ] Eval set: copy the client bots into `samples/client/` and measure rounds 0, 1a and 2
 
 ## Verification
 
