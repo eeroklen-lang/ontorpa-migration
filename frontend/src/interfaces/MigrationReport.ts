@@ -26,6 +26,7 @@ export interface MigrationReport {
   };
   target?: string;
   unmappedActivities: { activityType: string; context?: string; count: number }[];
+  ontologyOnlyOperations?: { operation: string; count: number }[];
   applications: { name: string; evidence: string[] }[];
   manualWork: {
     items: { activityType: string; label: string; file: string; reason: string }[];

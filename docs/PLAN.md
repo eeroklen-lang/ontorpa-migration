@@ -17,9 +17,10 @@ Tick boxes as work lands. Paths are relative to the repo root (`backend/…`, `f
 | M0: Setup | In progress |
 | M1: UiPath import (#1) | Done |
 | M2: Mapping + readiness report (#2) | Done (target coverage follows with M3) |
-| M3: PAD skeleton exporter | Done (Robin names not yet validated in PAD) |
+| M3: PAD skeleton exporter | Done (Robin names checked against PAD in M6) |
 | M4: API + UI integration | Done |
 | M5: Diagrams and migration workbench | Done |
+| M6: Growing the mapping rate | In progress (rounds 0–2b done; second PAD paste and eval set next) |
 | Verification | In progress (real bots, UI click-through, PAD on Windows) |
 
 ## Context
@@ -125,7 +126,7 @@ Findings from the templates that the importer must handle:
 ## M3: PAD skeleton exporter
 
 - [x] `backend/src/botLinkers/powerAutomateDesktopLinker/padMapping.ts`: ontology id → PAD Robin action template, e.g. `ExcelReadCellValue → Excel.ReadFromExcel.ReadCell Instance: ExcelInstance StartColumn: $'''A''' …`. Containers map to launch/close (`WebAutomation.LaunchEdge…` / `CloseWebBrowser`, `Excel.LaunchExcel.LaunchAndOpenUnderExistingProcess` / `CloseAndSave`); an Outlook scope to `Outlook.Launch` / `Outlook.Close`
-  - Only actions with a confident Robin name are mapped. No PAD action yet (counted as "ontology-only"): `ExcelExportPDF`, `ExcelFilterRange`, `ExcelFormatAsTable`, `OutlookDeleteEmail`, `OutlookSaveAttachments`, `StringHash`, Word, G Suite, triggers; `ParallelSplit` runs its branches one after another
+  - Only actions with a confident Robin name are mapped. No PAD action yet (counted as "ontology-only"): `ExcelExportPDF`, `ExcelFilterRange`, `ExcelFormatAsTable`, `OutlookDeleteEmail`, `OutlookSaveAttachments`, `StringHash`, Word, G Suite, triggers; `ParallelSplit` runs its branches one after another. (M6 round 2b added `ExcelFilterRange`, `OutlookDeleteEmail`, `OutlookSaveAttachments` and `StringHash`)
   - Literal URLs, paths and values are filled in; VB/C# expressions become `$'''TODO'''` with the original in a TODO comment (the importer now records `expressionLanguage` / `targetLanguage`). Simple assignments (`x = 3`, `x = "a"`, `x = True`) become `SET`
   - UI elements are `appmask['TODO']['TODO']`: selectors have to be re-captured in PAD
 - [x] `PowerAutomateDesktopLinker.ts`: implements `BotLinkerStrategyInterface`; `generatePadFlow(name, processTree)` for direct use
@@ -194,6 +195,35 @@ Front end:
 - Bots imported before M5 have no diagram: re-import them
 
 Checked with headless Chrome (DevTools protocol) against the dev servers, on imported templates: diagrams and colours in the modeler (TransactionalProcess, SaveOutlookAttachments, EnterExcelDataIntoWebsite); checklist numbers equal the report; correcting an operation (PAD 50 % → 100 %) and removing the manual Flowchart loop-back step, then saving, gives the expected review and PAD export; a loose task is listed; the inspector shows source and PAD lines; abstraction and metrics pages show the diagram, and abstraction aggregates the generated steps
+
+## M6: Growing the mapping rate
+
+The goal is to raise ontology and PAD coverage on bots that did not shape the mappings, so that the thesis can defend the numbers.
+- **Dev set:** public GitHub UiPath projects. Its gap census drives the mappings.
+- **Eval set:** the real client bots, held out. They are measured each round but never cited as evidence.
+
+Ontology operations and PAD actions grow in lockstep. Orchestrator queues, assets and credentials stay manual (#7, #8). Sets and selection are described in [`corpus/README.md`](corpus/README.md); the numbers are in [`coverage-history.md`](coverage-history.md).
+
+Decisions (2026-10-21):
+- Round 2 extends the ontology for activities seen at least 5 times in at least 3 dev bots.
+- SAP UI activities reuse the desktop UI operations; `sap` stays in the source context.
+- Each round is its own commit, so the eval set can be measured before and after it.
+
+- [x] Round 0: corpus and measurement
+  - [x] 40 public projects selected by fixed rules, pinned in `docs/corpus/public-corpus.json`, fetched by `scripts/fetch-public-corpus.sh` into `samples/public/`
+  - [x] Gap census: `buildGapReport` (`backend/src/analysis/gapReport.ts`); the CLI prints it and writes `gaps.md` / `gaps.csv`. Reports list `ontologyOnlyOperations`
+  - [x] Robustness over every bot in `samples/` (`backend/test/samples.ts`). This found and fixed the REFramework import, which lost business workflows that were renamed or invoked from extra states
+  - [x] Baseline: 68.4 % pooled on the dev set
+- [x] Round 1a: importer and mapping-table wins, without ontology changes. UI context from the activity's own selector, aliases onto existing operations, more scopes, `Highlight` ignored. 71.5 % pooled on the dev set. The PAD export flags actions on an application instance (`%Browser%`, …) that nothing launches
+- [x] Round 2: 31 operations in 14 new classes for the 35 activity types over the threshold, documented in [`ontology-extensions.md`](ontology-extensions.md):
+  - desktop UI as software-independent human-interface operations, reused for SAP
+  - data tables, files and folders, processes, databases, HTTP, SMTP, waiting, Break and dialogs
+
+  PAD actions for 19 of them. Check App State with branches is a decision, and its branch steps are no longer lost. Dev set: 87.8 % pooled ontology coverage, 80.7 % PAD coverage
+- [x] `npm run pad:catalog` (`backend/src/cli/padCatalog.ts`): one Robin flow with every PAD action
+- [x] Round 2b: first catalog paste into PAD (18 errors). Actions fixed from the PAD Robin Action Knowledge Base, PAD actions added for the 12 ontology-only round 2 operations and 4 older ones, and `test/fixtures/pad-robin-actions.json` plus a test that checks every catalog line against it (`scripts/update-pad-robin-fixture.js` refreshes it). Dev set: 87.7 % PAD coverage
+- [ ] Paste the corrected catalog into PAD and confirm that only TODO values and placeholder UI elements are flagged
+- [ ] Eval set: copy the client bots into `samples/client/` and measure rounds 0, 1a and 2
 
 ## Verification
 

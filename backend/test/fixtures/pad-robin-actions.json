@@ -1,0 +1,1065 @@
+{
+  "source": "PAD Robin Action Knowledge Base, https://github.com/JoeG592/pad-robin-action-kb",
+  "license": "CC BY 4.0",
+  "version": "3.4.0",
+  "pad_build": "2.73.00155.26278",
+  "note": "Only the actions the PAD exporter generates. Regenerate with scripts/update-pad-robin-fixture.js.",
+  "actions": {
+    "Cryptography.HashText": {
+      "kind": "Action",
+      "inputs": {
+        "Encoding": [
+          "DefaultEncoding",
+          "ANSI",
+          "Unicode",
+          "BigEndianUnicode",
+          "UTF8"
+        ],
+        "HashAlgorithm": [
+          "SHA256",
+          "SHA384",
+          "SHA512"
+        ],
+        "TextToHash": null
+      },
+      "outputs": [
+        "HashedText"
+      ],
+      "golden_example": "Cryptography.HashText HashAlgorithm: Cryptography.HashAlgorithm.SHA256 Encoding: Cryptography.EncryptionEncoding.Unicode TextToHash: $'''example''' HashedText=> HashedText"
+    },
+    "Database.Connect.Connect": {
+      "kind": "Action",
+      "inputs": {
+        "ConnectionString": null
+      },
+      "outputs": [
+        "Connection"
+      ],
+      "golden_example": "Database.Connect.Connect ConnectionString: $'''example''' Connection=> SQLConnection"
+    },
+    "Database.ExecuteSqlStatement.Execute": {
+      "kind": "Action",
+      "inputs": {
+        "Connection": null,
+        "Statement": null,
+        "Timeout": null
+      },
+      "outputs": [
+        "Result"
+      ],
+      "golden_example": "Database.ExecuteSqlStatement.Execute Connection: SQLConnection Statement: $'''example''' Timeout: 30 Result=> QueryResult"
+    },
+    "Display.InputDialog": {
+      "kind": "Action",
+      "inputs": {
+        "DefaultValue": null,
+        "InputType": [
+          "SingleLine",
+          "Password",
+          "Multiline"
+        ],
+        "IsTopMost": null,
+        "Message": null,
+        "Title": null
+      },
+      "outputs": [
+        "ButtonPressed",
+        "UserInput"
+      ],
+      "golden_example": "Display.InputDialog InputType: Display.InputType.SingleLine IsTopMost: False DefaultValue: $'''example''' Message: $'''example''' Title: $'''example''' UserInput=> UserInput ButtonPressed=> ButtonPressed"
+    },
+    "Display.ShowMessageDialog.ShowMessage": {
+      "kind": "Action",
+      "inputs": {
+        "Buttons": [
+          "OK",
+          "OKCancel",
+          "YesNo",
+          "YesNoCancel",
+          "AbortRetryIgnore",
+          "RetryCancel"
+        ],
+        "DefaultButton": [
+          "Button1",
+          "Button2",
+          "Button3"
+        ],
+        "Icon": [
+          "None",
+          "Information",
+          "Question",
+          "Warning",
+          "ErrorIcon"
+        ],
+        "IsTopMost": null,
+        "Message": null,
+        "Title": null
+      },
+      "outputs": [
+        "ButtonPressed"
+      ],
+      "golden_example": "Display.ShowMessageDialog.ShowMessage Icon: Display.Icon.None Buttons: Display.Buttons.OK DefaultButton: Display.DefaultButton.Button1 IsTopMost: False Message: $'''example''' Title: $'''example''' ButtonPressed=> ButtonPressed"
+    },
+    "Email.SendEmail.Send": {
+      "kind": "Action",
+      "inputs": {
+        "EnableSSL": null,
+        "Port": null,
+        "Attachments": null,
+        "BCC": null,
+        "Body": null,
+        "CC": null,
+        "IsBodyHtml": null,
+        "SenderDisplayName": null,
+        "SendFrom": null,
+        "SendTo": null,
+        "Subject": null,
+        "AcceptUntrustedCertificates": null,
+        "SMTPServer": null
+      },
+      "outputs": [],
+      "golden_example": "Email.SendEmail.Send SMTPServer: $'''smtp.test.com''' Port: 25 EnableSSL: False AcceptUntrustedCertificates: False SendFrom: $'''example''' SendTo: $'''example''' Body: $'''''' IsBodyHtml: False"
+    },
+    "Excel.AddWorksheet": {
+      "kind": "Action",
+      "inputs": {
+        "Instance": null,
+        "Name": null,
+        "WorksheetPosition": [
+          "First",
+          "Last"
+        ]
+      },
+      "outputs": [],
+      "golden_example": "Excel.AddWorksheet Instance: ExcelInstance Name: $'''example''' WorksheetPosition: Excel.WorksheetPosition.First"
+    },
+    "Excel.CloseExcel.Close": {
+      "kind": "Action",
+      "inputs": {
+        "Instance": null
+      },
+      "outputs": [],
+      "golden_example": "Excel.CloseExcel.Close Instance: ExcelInstance"
+    },
+    "Excel.CloseExcel.CloseAndSave": {
+      "kind": "Action",
+      "inputs": {
+        "Instance": null
+      },
+      "outputs": [],
+      "golden_example": "Excel.CloseExcel.CloseAndSave Instance: ExcelInstance"
+    },
+    "Excel.CopyCellsFromExcel.CopyCells": {
+      "kind": "Action",
+      "inputs": {
+        "StartColumn": null,
+        "StartRow": null,
+        "Instance": null,
+        "EndColumn": null,
+        "EndRow": null
+      },
+      "outputs": [],
+      "golden_example": "Excel.CopyCellsFromExcel.CopyCells StartColumn: $'''example''' StartRow: 1 Instance: ExcelInstance EndColumn: $'''example''' EndRow: 1"
+    },
+    "Excel.FilterCellsFromExcel.FilterSimpleWorksheet": {
+      "kind": "Action",
+      "inputs": {
+        "Instance": null,
+        "Column": null,
+        "SimpleFilterValues": null
+      },
+      "outputs": [],
+      "golden_example": "Excel.FilterCellsFromExcel.FilterSimpleWorksheet Instance: ExcelInstance Column: $'''example''' SimpleFilterValues: []"
+    },
+    "Excel.LaunchExcel.LaunchAndOpenUnderExistingProcess": {
+      "kind": "Action",
+      "inputs": {
+        "Path": null,
+        "UseMachineLocale": null,
+        "Visible": null,
+        "ReadOnly": null,
+        "WriteProtectionPassword": null,
+        "ReadProtectionPassword": null
+      },
+      "outputs": [
+        "Instance"
+      ],
+      "golden_example": "Excel.LaunchExcel.LaunchAndOpenUnderExistingProcess Path: $'''C:\\temp\\test.xlsx''' UseMachineLocale: False Visible: True ReadOnly: False WriteProtectionPassword: $'''password''' ReadProtectionPassword: $'''password''' Instance=> ExcelInstance"
+    },
+    "Excel.LaunchExcel.LaunchUnderExistingProcess": {
+      "kind": "Action",
+      "inputs": {
+        "UseMachineLocale": null,
+        "Visible": null
+      },
+      "outputs": [
+        "Instance"
+      ],
+      "golden_example": "Excel.LaunchExcel.LaunchUnderExistingProcess UseMachineLocale: False Visible: True Instance=> ExcelInstance"
+    },
+    "Excel.PasteCellsToExcel.PasteAt": {
+      "kind": "Action",
+      "inputs": {
+        "Column": null,
+        "Instance": null,
+        "Row": null
+      },
+      "outputs": [],
+      "golden_example": "Excel.PasteCellsToExcel.PasteAt Instance: ExcelInstance Column: $'''example''' Row: 1"
+    },
+    "Excel.ReadFromExcel.ReadAllCells": {
+      "kind": "Action",
+      "inputs": {
+        "FirstLineIsHeader": null,
+        "GetCellContentsMode": [
+          "TypedValues",
+          "PlainText",
+          "FormattedTextValues"
+        ],
+        "Instance": null
+      },
+      "outputs": [
+        "RangeValue"
+      ],
+      "golden_example": "Excel.ReadFromExcel.ReadAllCells FirstLineIsHeader: False GetCellContentsMode: Excel.GetCellContentsMode.TypedValues Instance: ExcelInstance RangeValue=> ExcelData"
+    },
+    "Excel.ReadFromExcel.ReadCell": {
+      "kind": "Action",
+      "inputs": {
+        "Instance": null,
+        "GetCellContentsMode": [
+          "TypedValues",
+          "PlainText",
+          "FormattedTextValues"
+        ],
+        "StartColumn": null,
+        "StartRow": null
+      },
+      "outputs": [
+        "CellValue"
+      ],
+      "golden_example": "Excel.ReadFromExcel.ReadCell Instance: ExcelInstance StartColumn: $'''example''' StartRow: 1 GetCellContentsMode: Excel.GetCellContentsMode.TypedValues CellValue=> ExcelData"
+    },
+    "Excel.RenameWorksheet.RenameWorksheetWithName": {
+      "kind": "Action",
+      "inputs": {
+        "Instance": null,
+        "Name": null,
+        "NewName": null
+      },
+      "outputs": [],
+      "golden_example": "Excel.RenameWorksheet.RenameWorksheetWithName Instance: ExcelInstance Name: $'''example''' NewName: $'''example'''"
+    },
+    "Excel.SaveExcel.Save": {
+      "kind": "Action",
+      "inputs": {
+        "Instance": null
+      },
+      "outputs": [],
+      "golden_example": "Excel.SaveExcel.Save Instance: ExcelInstance"
+    },
+    "Excel.WriteToExcel.WriteCell": {
+      "kind": "Action",
+      "inputs": {
+        "Column": null,
+        "Instance": null,
+        "Row": null,
+        "Value": null
+      },
+      "outputs": [],
+      "golden_example": "Excel.WriteToExcel.WriteCell Instance: ExcelInstance Value: $'''sample''' Column: $'''example''' Row: 1"
+    },
+    "File.Copy": {
+      "kind": "Action",
+      "inputs": {
+        "Destination": null,
+        "Files": null,
+        "IfFileExists": [
+          "DoNothing",
+          "Overwrite"
+        ]
+      },
+      "outputs": [
+        "CopiedFiles"
+      ],
+      "golden_example": "File.Copy Files: FileList Destination: $'''C:\\temp''' IfFileExists: File.IfExists.DoNothing CopiedFiles=> CopiedFiles"
+    },
+    "File.Delete": {
+      "kind": "Action",
+      "inputs": {
+        "Files": null
+      },
+      "outputs": [],
+      "golden_example": "File.Delete Files: FileList"
+    },
+    "File.IfFile.Exists": {
+      "kind": "Condition",
+      "inputs": {
+        "File": null
+      },
+      "outputs": [],
+      "golden_example": "IF (File.IfFile.Exists File: $'''C:\\temp\\test.xlsx''') THEN"
+    },
+    "File.ReadFromCSVFile.ReadCSV": {
+      "kind": "Action",
+      "inputs": {
+        "ColumnsSeparator": [
+          "SystemDefault",
+          "Comma",
+          "Semicolon",
+          "Tab"
+        ],
+        "CSVFile": null,
+        "Encoding": [
+          "SystemDefault",
+          "UTF8",
+          "Unicode",
+          "BigEndianUnicode",
+          "UTF8NoBOM",
+          "UnicodeNoBOM",
+          "ASCII"
+        ],
+        "FirstLineContainsColumnNames": null,
+        "TrimFields": null
+      },
+      "outputs": [
+        "CSVTable"
+      ],
+      "golden_example": "File.ReadFromCSVFile.ReadCSV CSVFile: $'''C:\\temp\\test.xlsx''' Encoding: File.CSVEncoding.UTF8 TrimFields: True FirstLineContainsColumnNames: False ColumnsSeparator: File.CSVColumnsSeparator.SystemDefault CSVTable=> CSVTable"
+    },
+    "File.ReadTextFromFile.ReadText": {
+      "kind": "Action",
+      "inputs": {
+        "Encoding": [
+          "DefaultEncoding",
+          "UTF8",
+          "Unicode",
+          "BigEndianUnicode",
+          "ANSI"
+        ],
+        "File": null
+      },
+      "outputs": [
+        "Content"
+      ],
+      "golden_example": "File.ReadTextFromFile.ReadText File: $'''C:\\temp\\test.xlsx''' Encoding: File.TextFileEncoding.UTF8 Content=> FileContents"
+    },
+    "File.WriteText": {
+      "kind": "Action",
+      "inputs": {
+        "AppendNewLine": null,
+        "Encoding": [
+          "DefaultEncoding",
+          "UTF8",
+          "Unicode",
+          "BigEndianUnicode",
+          "UTF8NoBOM",
+          "UnicodeNoBOM",
+          "ANSI"
+        ],
+        "File": null,
+        "IfFileExists": [
+          "Overwrite",
+          "Append"
+        ],
+        "TextToWrite": null
+      },
+      "outputs": [],
+      "golden_example": "File.WriteText File: $'''C:\\temp\\test.xlsx''' AppendNewLine: True IfFileExists: File.IfFileExists.Overwrite Encoding: File.FileEncoding.Unicode TextToWrite: $'''sample'''"
+    },
+    "Folder.Create": {
+      "kind": "Action",
+      "inputs": {
+        "FolderName": null,
+        "FolderPath": null
+      },
+      "outputs": [
+        "Folder"
+      ],
+      "golden_example": "Folder.Create FolderPath: $'''C:\\temp''' FolderName: $'''example''' Folder=> NewFolder"
+    },
+    "Folder.IfFolderExists.Exists": {
+      "kind": "Condition",
+      "inputs": {
+        "Path": null
+      },
+      "outputs": [],
+      "golden_example": "IF (Folder.IfFolderExists.Exists Path: $'''C:\\temp''') THEN"
+    },
+    "MouseAndKeyboard.SendKeys.FocusAndSendKeys": {
+      "kind": "Action",
+      "inputs": {
+        "DelayBetweenKeystrokes": null,
+        "SendTextAsHardwareKeys": null,
+        "TextToSend": null
+      },
+      "outputs": [],
+      "golden_example": "MouseAndKeyboard.SendKeys.FocusAndSendKeys TextToSend: $'''password''' DelayBetweenKeystrokes: 10 SendTextAsHardwareKeys: False"
+    },
+    "Outlook.Close": {
+      "kind": "Action",
+      "inputs": {
+        "Instance": null
+      },
+      "outputs": [],
+      "golden_example": "Outlook.Close Instance: OutlookInstance"
+    },
+    "Outlook.Launch": {
+      "kind": "Action",
+      "inputs": {},
+      "outputs": [
+        "Instance"
+      ],
+      "golden_example": "Outlook.Launch Instance=> OutlookInstance"
+    },
+    "Outlook.ProcessEmailMessages.DeleteEmails": {
+      "kind": "Action",
+      "inputs": {
+        "Instance": null,
+        "Account": null,
+        "EmailsToProcess": null
+      },
+      "outputs": [],
+      "golden_example": "Outlook.ProcessEmailMessages.DeleteEmails Instance: OutlookInstance Account: $'''example''' EmailsToProcess: List"
+    },
+    "Outlook.RetrieveEmailMessages.RetrieveEmails": {
+      "kind": "Action",
+      "inputs": {
+        "BodyContains": null,
+        "FromContains": null,
+        "MailFolder": null,
+        "MarkAsRead": null,
+        "SubjectContains": null,
+        "ToContains": null,
+        "ReadBodyAsHtml": null,
+        "Account": null,
+        "Instance": null,
+        "EmailsToRetrieve": [
+          "All",
+          "Unread",
+          "Read"
+        ]
+      },
+      "outputs": [
+        "Messages"
+      ],
+      "golden_example": "Outlook.RetrieveEmailMessages.RetrieveEmails Instance: OutlookInstance Account: $'''test@test.com''' MailFolder: $'''example''' EmailsToRetrieve: Outlook.RetrieveMessagesMode.All MarkAsRead: True ReadBodyAsHtml: False"
+    },
+    "Outlook.RetrieveEmailMessages.RetrieveEmailsAndSaveAttachments": {
+      "kind": "Action",
+      "inputs": {
+        "ReadBodyAsHtml": null,
+        "MarkAsRead": null,
+        "MailFolder": null,
+        "ToContains": null,
+        "SubjectContains": null,
+        "SaveAttachmentsInto": null,
+        "BodyContains": null,
+        "Account": null,
+        "Instance": null,
+        "FromContains": null,
+        "EmailsToRetrieve": [
+          "All",
+          "Unread",
+          "Read"
+        ]
+      },
+      "outputs": [
+        "Messages"
+      ],
+      "golden_example": "Outlook.RetrieveEmailMessages.RetrieveEmailsAndSaveAttachments ReadBodyAsHtml: False MarkAsRead: True MailFolder: $'''example''' ToContains: $'''example''' SubjectContains: $'''example''' SaveAttachmentsInto: $'''C:\\temp''' BodyContains: $'''example''' Account: $'''example''' Instance: OutlookInstance FromContains: $'''example''' EmailsToRetrieve: Outlook.RetrieveMessagesMode.All Messages=> RetrievedEmails"
+    },
+    "Outlook.SendEmailThroughOutlook.SendEmail": {
+      "kind": "Action",
+      "inputs": {
+        "Attachments": null,
+        "BCC": null,
+        "Body": null,
+        "CC": null,
+        "IsBodyHtml": null,
+        "SendTo": null,
+        "Subject": null,
+        "IsDraft": null,
+        "Account": null,
+        "Instance": null
+      },
+      "outputs": [],
+      "golden_example": "Outlook.SendEmailThroughOutlook.SendEmail Instance: OutlookInstance Account: $'''test@test.com''' SendTo: $'''example''' IsBodyHtml: False IsDraft: False"
+    },
+    "System.RunApplication.RunApplication": {
+      "kind": "Action",
+      "inputs": {
+        "WindowStyle": [
+          "Normal",
+          "Hidden",
+          "Minimized",
+          "Maximized"
+        ],
+        "WorkingDirectory": null,
+        "ApplicationPath": null,
+        "CommandLineArguments": null
+      },
+      "outputs": [
+        "ProcessId"
+      ],
+      "golden_example": "System.RunApplication.RunApplication WindowStyle: System.ProcessWindowStyle.Normal WorkingDirectory: $'''C:\\temp''' ApplicationPath: $'''C:\\temp\\test.xlsx''' CommandLineArguments: $'''example''' ProcessId=> AppProcessId"
+    },
+    "System.TerminateProcess.TerminateProcessByName": {
+      "kind": "Action",
+      "inputs": {
+        "ProcessName": null
+      },
+      "outputs": [],
+      "golden_example": "System.TerminateProcess.TerminateProcessByName ProcessName: $'''example'''"
+    },
+    "Text.Replace.ReplaceTextWithRegex": {
+      "kind": "Action",
+      "inputs": {
+        "Text": null,
+        "TextToFind": null,
+        "ReplaceWith": null,
+        "ActivateEscapeSequences": null,
+        "IgnoreCase": null
+      },
+      "outputs": [
+        "Result"
+      ],
+      "golden_example": "Text.Replace.ReplaceTextWithRegex Text: $'''example''' TextToFind: $'''example''' ReplaceWith: $'''example''' ActivateEscapeSequences: False IgnoreCase: False Result=> Replaced"
+    },
+    "Text.Trim": {
+      "kind": "Action",
+      "inputs": {
+        "Text": null,
+        "TrimOption": [
+          "FromStart",
+          "ToEnd",
+          "Both"
+        ]
+      },
+      "outputs": [
+        "TrimmedText"
+      ],
+      "golden_example": "Text.Trim Text: $'''''' TrimOption: Text.TrimOption.Both TrimmedText=> TrimmedText"
+    },
+    "UIAutomation.Click.Click": {
+      "kind": "Action",
+      "inputs": {
+        "OffsetX": null,
+        "OffsetY": null,
+        "Element": null,
+        "ClickType": [
+          "LeftClick",
+          "RightClick",
+          "DoubleClick",
+          "LeftButtonDown",
+          "LeftButtonUp",
+          "RightButtonDown",
+          "RightButtonUp",
+          "MiddleClick"
+        ],
+        "MousePositionRelativeToElement": [
+          "TopLeft",
+          "TopCenter",
+          "TopRight",
+          "MiddleLeft",
+          "MiddleCenter",
+          "MiddleRight",
+          "BottomLeft",
+          "BottomCenter",
+          "BottomRight"
+        ]
+      },
+      "outputs": [],
+      "golden_example": "UIAutomation.Click.Click OffsetX: 0 OffsetY: 0 Element: appmask['Window \\'KB Test Window\\'']['Button \\'OK\\''] ClickType: UIAutomation.ClickType.LeftClick MousePositionRelativeToElement: UIAutomation.RectangleEdgePoint.MiddleCenter"
+    },
+    "UIAutomation.IfWindowContains.WindowContainsElement": {
+      "kind": "Condition",
+      "inputs": {
+        "InstantCheck": null,
+        "Element": null
+      },
+      "outputs": [],
+      "golden_example": "IF (UIAutomation.IfWindowContains.WindowContainsElement InstantCheck: False Element: appmask['Window \\'KB Test Window\\'']['Button \\'OK\\'']) THEN"
+    },
+    "UIAutomation.PopulateTextField.PopulateTextField": {
+      "kind": "Action",
+      "inputs": {
+        "Text": null,
+        "Mode": [
+          "Replace",
+          "Append"
+        ],
+        "TextField": null,
+        "ClickType": [
+          "SingleClick",
+          "DoubleClick",
+          "None"
+        ]
+      },
+      "outputs": [],
+      "golden_example": "UIAutomation.PopulateTextField.PopulateTextField Text: $'''password''' Mode: UIAutomation.PopulateTextMode.Replace TextField: appmask['Window \\'KB Test Window\\'']['Edit \\'Name\\''] ClickType: UIAutomation.PopulateMouseClickType.SingleClick"
+    },
+    "UIAutomation.SetWindowState.SetState": {
+      "kind": "Action",
+      "inputs": {
+        "State": [
+          "Restored",
+          "Maximized",
+          "Minimized"
+        ],
+        "Window": null
+      },
+      "outputs": [],
+      "golden_example": "UIAutomation.SetWindowState.SetState State: UIAutomation.WindowState.Restored Window: appmask['Window \\'KB Test Window\\'']"
+    },
+    "UIAutomation.WaitForWindowContent.WindowToContainElement": {
+      "kind": "Wait",
+      "inputs": {
+        "Element": null
+      },
+      "outputs": [],
+      "golden_example": "WAIT (UIAutomation.WaitForWindowContent.WindowToContainElement Element: appmask['Window \\'KB Test Window\\'']['Button \\'OK\\''])"
+    },
+    "Variables.AddColumnToDataTable.AppendColumnToDataTable": {
+      "kind": "Action",
+      "inputs": {
+        "DataTable": null,
+        "ColumnName": null
+      },
+      "outputs": [],
+      "golden_example": "Variables.AddColumnToDataTable.AppendColumnToDataTable DataTable: DataTable ColumnName: $'''example'''"
+    },
+    "Variables.AddItemToList": {
+      "kind": "Action",
+      "inputs": {
+        "Item": null,
+        "List": null
+      },
+      "outputs": [],
+      "golden_example": "Variables.AddItemToList Item: $'''sample''' List: FileList"
+    },
+    "Variables.AddRowToDataTable.AppendRowToDataTable": {
+      "kind": "Action",
+      "inputs": {
+        "DataTable": null,
+        "RowToAdd": null
+      },
+      "outputs": [],
+      "golden_example": "Variables.AddRowToDataTable.AppendRowToDataTable DataTable: DataTable RowToAdd: FileList"
+    },
+    "Variables.ClearDataTable": {
+      "kind": "Action",
+      "inputs": {
+        "DataTable": null
+      },
+      "outputs": [],
+      "golden_example": "Variables.ClearDataTable DataTable: DataTable"
+    },
+    "Variables.ConvertJsonToCustomObject": {
+      "kind": "Action",
+      "inputs": {
+        "Json": null
+      },
+      "outputs": [
+        "CustomObject"
+      ],
+      "golden_example": "Variables.ConvertJsonToCustomObject Json: $'''example''' CustomObject=> JsonAsCustomObject"
+    },
+    "Variables.CreateNewDatatable": {
+      "kind": "Action",
+      "inputs": {
+        "InputTable": null
+      },
+      "outputs": [
+        "DataTable"
+      ],
+      "golden_example": "Variables.CreateNewDatatable InputTable: { } DataTable=> DataTable"
+    },
+    "Variables.CreateNewList": {
+      "kind": "Action",
+      "inputs": {},
+      "outputs": [
+        "List"
+      ],
+      "golden_example": "Variables.CreateNewList List=> List"
+    },
+    "Variables.FilterDataTable": {
+      "kind": "Action",
+      "inputs": {
+        "DataTable": null,
+        "FilterParameters": null,
+        "MatchCase": null
+      },
+      "outputs": [
+        "FilteredDataTable"
+      ],
+      "golden_example": "Variables.FilterDataTable DataTable: DataTable FilterParameters: DataTable MatchCase: True FilteredDataTable=> FilteredDataTable"
+    },
+    "Variables.FindOrReplaceInDataTable.FindItemInDataTableByColumnIndex": {
+      "kind": "Action",
+      "inputs": {
+        "MatchEntireCellContents": null,
+        "MatchCase": null,
+        "ColumnNameOrIndex": null,
+        "DataTable": null,
+        "AllMatches": null,
+        "ValueToFind": null
+      },
+      "outputs": [
+        "DataTableMatches"
+      ],
+      "golden_example": "Variables.FindOrReplaceInDataTable.FindItemInDataTableByColumnIndex MatchEntireCellContents: False MatchCase: False ColumnNameOrIndex: $'''example''' DataTable: RecognizedEntities AllMatches: True ValueToFind: $'''example''' DataTableMatches=> DataTableMatches"
+    },
+    "Web.InvokeWebService.InvokeWebService": {
+      "kind": "Action",
+      "inputs": {
+        "ClearCookies": null,
+        "FailOnErrorStatus": null,
+        "UserAgent": null,
+        "CustomHeaders": null,
+        "ConnectionTimeout": null,
+        "FollowRedirection": null,
+        "TrimRequestBody": null,
+        "Encoding": [
+          "AutoDetect",
+          "IBM037",
+          "IBM437",
+          "IBM500",
+          "ASMO_708",
+          "DOS_720",
+          "ibm737",
+          "ibm775",
+          "ibm850",
+          "ibm852",
+          "IBM855",
+          "ibm857",
+          "IBM00858",
+          "IBM860",
+          "ibm861",
+          "DOS_862",
+          "IBM863",
+          "IBM864",
+          "IBM865",
+          "cp866",
+          "ibm869",
+          "IBM870",
+          "windows_874",
+          "cp875",
+          "shift_jis",
+          "gb2312",
+          "ks_c_5601_1987",
+          "big5",
+          "IBM1026",
+          "IBM01047",
+          "IBM01140",
+          "IBM01141",
+          "IBM01142",
+          "IBM01143",
+          "IBM01144",
+          "IBM01145",
+          "IBM01146",
+          "IBM01147",
+          "IBM01148",
+          "IBM01149",
+          "utf_16",
+          "utf_16BE",
+          "windows_1250",
+          "windows_1251",
+          "Windows_1252",
+          "windows_1253",
+          "windows_1254",
+          "windows_1255",
+          "windows_1256",
+          "windows_1257",
+          "windows_1258",
+          "Johab",
+          "macintosh",
+          "x_mac_japanese",
+          "x_mac_chinesetrad",
+          "x_mac_korean",
+          "x_mac_arabic",
+          "x_mac_hebrew",
+          "x_mac_greek",
+          "x_mac_cyrillic",
+          "x_mac_chinesesimp",
+          "x_mac_romanian",
+          "x_mac_ukrainian",
+          "x_mac_thai",
+          "x_mac_ce",
+          "x_mac_icelandic",
+          "x_mac_turkish",
+          "x_mac_croatian",
+          "utf_32",
+          "utf_32BE",
+          "x_Chinese_CNS",
+          "x_cp20001",
+          "x_Chinese_Eten",
+          "x_cp20003",
+          "x_cp20004",
+          "x_cp20005",
+          "x_IA5",
+          "x_IA5_German",
+          "x_IA5_Swedish",
+          "x_IA5_Norwegian",
+          "us_ascii",
+          "x_cp20261",
+          "x_cp20269",
+          "IBM273",
+          "IBM277",
+          "IBM278",
+          "IBM280",
+          "IBM284",
+          "IBM285",
+          "IBM290",
+          "IBM297",
+          "IBM420",
+          "IBM423",
+          "IBM424",
+          "x_EBCDIC_KoreanExtended",
+          "IBM_Thai",
+          "koi8_r",
+          "IBM871",
+          "IBM880",
+          "IBM905",
+          "IBM00924",
+          "EUC_JP_20932",
+          "x_cp20936",
+          "x_cp20949",
+          "cp1025",
+          "koi8_u",
+          "iso_8859_1",
+          "iso_8859_2",
+          "iso_8859_3",
+          "iso_8859_4",
+          "iso_8859_5",
+          "iso_8859_6",
+          "iso_8859_7",
+          "iso_8859_8",
+          "iso_8859_9",
+          "iso_8859_13",
+          "iso_8859_15",
+          "x_Europa",
+          "iso_8859_8_i",
+          "iso_2022_jp_50220",
+          "csISO2022JP",
+          "iso_2022_jp_50222",
+          "iso_2022_kr",
+          "x_cp50227",
+          "euc_jp_51932",
+          "EUC_CN",
+          "euc_kr",
+          "hz_gb_2312",
+          "GB18030",
+          "x_iscii_de",
+          "x_iscii_be",
+          "x_iscii_ta",
+          "x_iscii_te",
+          "x_iscii_as",
+          "x_iscii_or",
+          "x_iscii_ka",
+          "x_iscii_ma",
+          "x_iscii_gu",
+          "x_iscii_pa",
+          "utf_7",
+          "utf_8"
+        ],
+        "AcceptUntrustedCertificates": null,
+        "Url": null,
+        "EncodeRequestBody": null,
+        "RequestBody": null,
+        "Accept": null,
+        "ContentType": null,
+        "Method": [
+          "Get",
+          "Post",
+          "Connect",
+          "Head",
+          "Put",
+          "Delete",
+          "Options",
+          "Trace",
+          "Patch"
+        ]
+      },
+      "outputs": [
+        "StatusCode",
+        "Response",
+        "ResponseHeaders"
+      ],
+      "golden_example": "Web.InvokeWebService.InvokeWebService Url: $'''example''' Method: Web.Method.Get Accept: $'''application/xml''' ContentType: $'''application/xml''' ConnectionTimeout: 30 FollowRedirection: True ClearCookies: False FailOnErrorStatus: False EncodeRequestBody: True UserAgent: $'''Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.21) Gecko/20100312 Firefox/3.6''' Encoding: Web.Encoding.AutoDetect AcceptUntrustedCertificates: False TrimRequestBody: True ResponseHeaders=> WebServiceResponseHeaders Response=> WebServiceResponse StatusCode=> StatusCode"
+    },
+    "WebAutomation.Click.Click": {
+      "kind": "Action",
+      "inputs": {
+        "OffsetY": null,
+        "WaitForPageToLoadTimeout": null,
+        "Control": null,
+        "BrowserInstance": null,
+        "OffsetX": null,
+        "ClickType": [
+          "LeftClick",
+          "RightClick",
+          "DoubleClick",
+          "LeftButtonDown",
+          "LeftButtonUp",
+          "RightButtonDown",
+          "RightButtonUp",
+          "MiddleClick"
+        ],
+        "MousePositionRelativeToElement": [
+          "TopLeft",
+          "TopCenter",
+          "TopRight",
+          "MiddleLeft",
+          "MiddleCenter",
+          "MiddleRight",
+          "BottomLeft",
+          "BottomCenter",
+          "BottomRight"
+        ],
+        "MouseClick": null
+      },
+      "outputs": [],
+      "golden_example": "WebAutomation.Click.Click OffsetY: 0 WaitForPageToLoadTimeout: 60 Control: appmask['Web Page \\'KB Test Page\\'']['Button \\'Submit\\''] BrowserInstance: Browser OffsetX: 0 ClickType: WebAutomation.ClickType.LeftClick MousePositionRelativeToElement: WebAutomation.RectangleEdgePoint.MiddleCenter MouseClick: True"
+    },
+    "WebAutomation.CloseWebBrowser": {
+      "kind": "Action",
+      "inputs": {
+        "BrowserInstance": null
+      },
+      "outputs": [],
+      "golden_example": "WebAutomation.CloseWebBrowser BrowserInstance: Browser"
+    },
+    "WebAutomation.ExtractData.ExtractTable": {
+      "kind": "Action",
+      "inputs": {
+        "PostProcessData": null,
+        "TimeoutInSeconds": null,
+        "Control": null,
+        "BrowserInstance": null,
+        "ExtractionParameters": null
+      },
+      "outputs": [
+        "ExtractedData"
+      ],
+      "golden_example": "WebAutomation.ExtractData.ExtractTable PostProcessData: False TimeoutInSeconds: 60 Control: $'''example''' BrowserInstance: Browser ExtractionParameters: RecognizedEntities ExtractedData=> DataFromWebPage"
+    },
+    "WebAutomation.GetDetailsOfElement": {
+      "kind": "Action",
+      "inputs": {
+        "AttributeName": null,
+        "BrowserInstance": null,
+        "Control": null
+      },
+      "outputs": [
+        "AttributeValue"
+      ],
+      "golden_example": "WebAutomation.GetDetailsOfElement BrowserInstance: Browser Control: $'''body''' AttributeName: $'''Own Text''' AttributeValue=> AttributeValue"
+    },
+    "WebAutomation.GoToWebPage.GoToWebPage": {
+      "kind": "Action",
+      "inputs": {
+        "BrowserInstance": null,
+        "Url": null,
+        "WaitForPageToLoadTimeout": null
+      },
+      "outputs": [],
+      "golden_example": "WebAutomation.GoToWebPage.GoToWebPage BrowserInstance: Browser Url: $'''example''' WaitForPageToLoadTimeout: 60"
+    },
+    "WebAutomation.GoToWebPage.NavigateBack": {
+      "kind": "Action",
+      "inputs": {
+        "WaitForPageToLoadTimeout": null,
+        "BrowserInstance": null
+      },
+      "outputs": [],
+      "golden_example": "WebAutomation.GoToWebPage.NavigateBack WaitForPageToLoadTimeout: 60 BrowserInstance: Browser"
+    },
+    "WebAutomation.IfWebPageContains.WebPageContainsElement": {
+      "kind": "Condition",
+      "inputs": {
+        "BrowserInstance": null,
+        "Control": null
+      },
+      "outputs": [],
+      "golden_example": "IF (WebAutomation.IfWebPageContains.WebPageContainsElement BrowserInstance: Browser Control: $'''body''') THEN"
+    },
+    "WebAutomation.LaunchEdge.LaunchEdge": {
+      "kind": "Action",
+      "inputs": {
+        "ClearCache": null,
+        "ClearCookies": null,
+        "Timeout": null,
+        "Url": null,
+        "WaitForPageToLoadTimeout": null,
+        "WindowState": [
+          "Normal",
+          "Maximized",
+          "Minimized"
+        ],
+        "TargetDesktop": null,
+        "PiPUserDataFolderMode": [
+          "AutomaticProfile",
+          "DefaultProfile",
+          "CustomProfile"
+        ]
+      },
+      "outputs": [
+        "BrowserInstance"
+      ],
+      "golden_example": "WebAutomation.LaunchEdge.LaunchEdge Url: $'''example''' WindowState: WebAutomation.BrowserWindowState.Normal ClearCache: False ClearCookies: False WaitForPageToLoadTimeout: 60 Timeout: 60 BrowserInstance=> Browser"
+    },
+    "WebAutomation.PopulateTextField.PopulateTextField": {
+      "kind": "Action",
+      "inputs": {
+        "WaitForPageToLoadTimeout": null,
+        "Control": null,
+        "BrowserInstance": null,
+        "UnfocusAfterPopulate": null,
+        "EmulateTyping": null,
+        "Text": null,
+        "Mode": [
+          "Replace",
+          "Append"
+        ]
+      },
+      "outputs": [],
+      "golden_example": "WebAutomation.PopulateTextField.PopulateTextField WaitForPageToLoadTimeout: 60 Control: appmask['Web Page \\'KB Test Page\\'']['Button \\'Submit\\''] BrowserInstance: Browser UnfocusAfterPopulate: True EmulateTyping: True Text: $'''password''' Mode: WebAutomation.PopulateTextMode.Replace"
+    },
+    "WebAutomation.SetCheckboxState.SetCheckboxState": {
+      "kind": "Action",
+      "inputs": {
+        "WaitForPageToLoadTimeout": null,
+        "BrowserInstance": null,
+        "Control": null,
+        "State": [
+          "Checked",
+          "Unchecked"
+        ]
+      },
+      "outputs": [],
+      "golden_example": "WebAutomation.SetCheckboxState.SetCheckboxState WaitForPageToLoadTimeout: 60 BrowserInstance: Browser Control: appmask['Web Page \\'KB Test Page\\'']['Button \\'Submit\\''] State: WebAutomation.CheckboxState.Checked"
+    },
+    "WebAutomation.SetDropDownListValue.SetDropDownListValueByName": {
+      "kind": "Action",
+      "inputs": {
+        "UseRegularExpression": null,
+        "WaitForPageToLoadTimeout": null,
+        "Control": null,
+        "BrowserInstance": null,
+        "OptionNames": null
+      },
+      "outputs": [],
+      "golden_example": "WebAutomation.SetDropDownListValue.SetDropDownListValueByName UseRegularExpression: False WaitForPageToLoadTimeout: 60 Control: appmask['Web Page \\'KB Test Page\\'']['Button \\'Submit\\''] BrowserInstance: Browser OptionNames: TextList"
+    },
+    "WebAutomation.WaitForWebPageContent.WebPageToContainElement": {
+      "kind": "Wait",
+      "inputs": {
+        "BrowserInstance": null,
+        "Control": null
+      },
+      "outputs": [],
+      "golden_example": "WAIT (WebAutomation.WaitForWebPageContent.WebPageToContainElement BrowserInstance: Browser Control: $'''body''')"
+    }
+  }
+}

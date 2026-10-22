@@ -30,7 +30,7 @@ cd backend  && npm install && npm run dev   # API on http://localhost:3001
 cd frontend && npm install && npm run dev   # modeler, URL printed by Vite
 ```
 
-The back end only starts serving the API once it has connected to MongoDB. The database keeps its data in the `mongo-data` volume, so `docker compose down` keeps stored bots; `docker compose down -v` deletes them. MongoDB is only reachable from this machine.
+The back end only starts serving the API once it has connected to MongoDB. The API, the modeler and the database only listen on this machine, as the app has no login. To open the app from another computer on purpose, start the back end with `HOST=0.0.0.0` and the front end with `npm run dev -- --host`. The database keeps its data in the `mongo-data` volume, so `docker compose down` keeps stored bots; `docker compose down -v` deletes them. MongoDB is only reachable from this machine.
 
 ## Importing UiPath bots
 

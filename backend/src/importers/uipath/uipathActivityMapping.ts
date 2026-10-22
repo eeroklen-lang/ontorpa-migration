@@ -46,6 +46,15 @@ const ui = (operations: Partial<Record<AppContext, string>>): Rule => {
 };
 const uiRules = new Set<Rule>();
 
+/**
+ * Desktop applications and SAP GUI share the software-independent human-interface operations;
+ * the application stays in the step's source context.
+ */
+const onDesktop = (operation: string): Partial<Record<AppContext, string>> => ({
+  desktop: operation,
+  sap: operation,
+});
+
 /** An API activity whose ontology operation depends on the application scope it runs in. */
 const api =
   (operations: Partial<Record<AppContext, string>>): Rule =>
@@ -58,12 +67,13 @@ const api =
  */
 const activityRules: Record<string, Rule> = {
   // UI automation, modern (uix) and classic (ui)
-  NClick: ui({ browser: "BrowserClickButton" }),
-  Click: ui({ browser: "BrowserClickButton" }),
-  NTypeInto: ui({ browser: "BrowserInputText" }),
-  TypeInto: ui({ browser: "BrowserInputText" }),
-  TypeSecureText: ui({ browser: "BrowserInputText" }),
-  SetText: ui({ browser: "BrowserInputText" }),
+  NClick: ui({ browser: "BrowserClickButton", ...onDesktop("ClickElement") }),
+  Click: ui({ browser: "BrowserClickButton", ...onDesktop("ClickElement") }),
+  NTypeInto: ui({ browser: "BrowserInputText", ...onDesktop("TypeIntoElement") }),
+  TypeInto: ui({ browser: "BrowserInputText", ...onDesktop("TypeIntoElement") }),
+  TypeSecureText: ui({ browser: "BrowserInputText", ...onDesktop("TypeIntoElement") }),
+  SetText: ui({ browser: "BrowserInputText", ...onDesktop("TypeIntoElement") }),
+  NSetText: ui({ browser: "BrowserInputText", ...onDesktop("TypeIntoElement") }),
   NGetText: ui({ browser: "BrowserGetText" }),
   GetValue: ui({ browser: "BrowserGetText" }),
   GetFullText: ui({ browser: "BrowserGetText" }),
@@ -80,6 +90,18 @@ const activityRules: Record<string, Rule> = {
   NavigateTo: mapped("BrowserOpenURL"),
   CloseTab: mapped("BrowserClose"),
   NCloseTab: mapped("BrowserClose"),
+  CloseApplication: ui({ browser: "BrowserClose" }),
+  CloseWindow: ui({ browser: "BrowserClose" }),
+  // Keys, element checks and windows work the same in any application
+  SendHotkey: mapped("PressKeys"),
+  NKeyboardShortcuts: mapped("PressKeys"),
+  UiElementExists: mapped("CheckElement"),
+  ElementExists: mapped("CheckElement"),
+  WaitUiElementAppear: mapped("CheckElement"),
+  NCheckState: mapped("CheckElement"),
+  MaximizeWindow: mapped("MaximizeWindow"),
+  NExtractData: ui({ browser: "BrowserExtractTable" }),
+  ExtractData: ui({ browser: "BrowserExtractTable" }),
 
   // Excel, modern (…X) and classic
   ReadCellValueX: mapped("ExcelReadCellValue"),
@@ -98,7 +120,9 @@ const activityRules: Record<string, Rule> = {
   WriteRangeX: mapped("ExcelWriteRange"),
   ExcelWriteRange: mapped("ExcelWriteRange"),
   WriteRange: mapped("ExcelWriteRange"),
+  AppendRange: mapped("ExcelWriteRange"),
   CopyPasteRangeX: mapped("ExcelCopyRange"),
+  ExcelCopyPasteRange: mapped("ExcelCopyRange"),
   FilterX: mapped("ExcelFilterRange"),
   ExcelFilterTable: mapped("ExcelFilterRange"),
   CreateTableX: mapped("ExcelFormatAsTable"),
@@ -114,13 +138,49 @@ const activityRules: Record<string, Rule> = {
   DeleteMailX: api({ outlook: "OutlookDeleteEmail" }),
   SaveMailAttachmentsX: api({ outlook: "OutlookSaveAttachments" }),
 
-  // Files
-  AppendLine: mapped("AppendPlainText"),
-  DeleteFileX: mapped("DeleteFile"),
+  // Mail over SMTP
+  SendMail: mapped("SmtpSendEmail"),
 
-  // Variables
+  // Files and folders
+  AppendLine: mapped("AppendPlainText"),
+  WriteTextFile: mapped("CreateTextFile"),
+  DeleteFileX: mapped("DeleteFile"),
+  Delete: mapped("DeleteFile"),
+  ReadTextFile: mapped("ReadTextFile"),
+  ReadCsvFile: mapped("ReadCsvFile"),
+  CopyFile: mapped("CopyFile"),
+  CreateDirectory: mapped("CreateFolder"),
+  PathExists: mapped("PathExists"),
+  FileExistsX: mapped("PathExists"),
+  FolderExistsX: mapped("PathExists"),
+
+  // Variables, data tables, collections, text and JSON
   Assign: mapped("SetVariable"),
   MultipleAssign: mapped("SetVariable"),
+  BuildDataTable: mapped("TableCreate"),
+  AddDataRow: mapped("TableAddRow"),
+  AddDataColumn: mapped("TableAddColumn"),
+  FilterDataTable: mapped("TableFilter"),
+  LookupDataTable: mapped("TableLookup"),
+  GetRowItem: mapped("TableGetRowItem"),
+  ClearDataTable: mapped("TableClear"),
+  AddToCollection: mapped("ListAddItem"),
+  Replace: mapped("StringReplace"),
+  DeserializeJson: mapped("JsonParse"),
+  DeserializeJsonArray: mapped("JsonParse"),
+
+  // Databases and web services
+  DatabaseConnect: mapped("DatabaseConnect"),
+  ExecuteQuery: mapped("DatabaseRunQuery"),
+  HttpClient: mapped("HttpRequest"),
+
+  // System: waiting, processes, dialogs for attended bots, leaving a loop
+  Delay: mapped("Wait"),
+  StartProcess: mapped("StartProcess"),
+  KillProcess: mapped("KillProcess"),
+  MessageBox: mapped("ShowMessage"),
+  InputDialog: mapped("AskForInput"),
+  Break: mapped("ExitLoop"),
 
   // Logging and comments carry no behaviour to migrate
   LogMessage: ignore,
@@ -129,6 +189,8 @@ const activityRules: Record<string, Rule> = {
   CommentOut: ignore,
   AddLogFields: ignore,
   RemoveLogFields: ignore,
+  // Only marks an element on screen while debugging
+  Highlight: ignore,
 
   // Needs human redesign; out of scope for automatic migration
   InvokeCode: manual("Invoke Code: custom VB/C# code"),
@@ -162,6 +224,7 @@ const CLASSIC_UI_ACTIVITIES = new Set([
   "SendHotkey",
   "ExtractData",
   "ElementExists",
+  "UiElementExists",
   "FindElement",
   "WaitUiElementAppear",
   "WaitUiElementVanish",
@@ -178,6 +241,25 @@ export function isUiActivity(node: XamlNode): boolean {
     uiActivityTypes.has(node.name) ||
     CLASSIC_UI_ACTIVITIES.has(node.name)
   );
+}
+
+/**
+ * The application a UI activity outside any UI scope acts on, from its own selector: a web page
+ * (<html>, <webctrl>), SAP, or another desktop application (<wnd>, <ctrl>, …). Classic activities
+ * keep the selector in Target, modern ones in TargetAnchorable. Undefined without a selector, or
+ * when the selector is only a variable.
+ */
+export function uiContextOfSelector(node: XamlNode): AppContext | undefined {
+  const target = node.slots.Target?.[0];
+  const selectors = [
+    arg(node, "Selector"),
+    ...(target ? ["Selector", "ScopeSelectorArgument", "FullSelectorArgument"].map((p) => arg(target, p)) : []),
+  ];
+  const text = selectors.map((s) => s?.text || "").join(" ");
+  if (!/<\w+[\s/>]/.test(text)) {
+    return undefined;
+  }
+  return /<(html|webctrl)[\s/>]/i.test(text) ? "browser" : scopeForApplication(undefined, text).app;
 }
 
 /** Loop activities: collection loops map to ForEachLoop, condition loops to ConditionalLoop. */
@@ -309,10 +391,19 @@ export function scopeOf(node: XamlNode): ScopeInfo | undefined {
     case "SAPLogon":
     case "SAPLogin":
       return { app: "sap", kind: "ui" };
-    // Excel
+    // Excel; ExcelScope is a third-party scope that works like Excel Application Scope
     case "ExcelApplicationCard":
     case "ExcelApplicationScope":
-      return { app: "excel", kind: "api", container: "WithMicrosoftExcel", target: arg(node, "WorkbookPath") };
+    case "ExcelScope":
+      return {
+        app: "excel",
+        kind: "api",
+        container: "WithMicrosoftExcel",
+        target: arg(node, "WorkbookPath") ?? arg(node, "FilePath"),
+      };
+    // Modern Excel Process Scope: the Use Excel File cards inside it are the containers
+    case "ExcelProcessScopeX":
+      return { app: "excel", kind: "api" };
     // Mail
     case "OutlookApplicationCard":
     case "OutlookMailMessagesScope":
@@ -323,6 +414,7 @@ export function scopeOf(node: XamlNode): ScopeInfo | undefined {
     // Word
     case "WordApplicationScope":
     case "WordApplicationCard":
+    case "WordScope":
       return { app: "word", kind: "api", target: arg(node, "FilePath") };
     default:
       return undefined;

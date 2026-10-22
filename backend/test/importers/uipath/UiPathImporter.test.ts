@@ -1,5 +1,3 @@
-import fs from "fs";
-import path from "path";
 import { describe, expect, it } from "vitest";
 import {
   IProcessTreeNodeInfo,
@@ -8,12 +6,14 @@ import {
 import { importProject } from "../../../src/importers/uipath/UiPathImporter";
 import { mappedOperationIds } from "../../../src/importers/uipath/uipathActivityMapping";
 import { isOntologyOperation } from "../../../src/utils/ontologyIndex";
+import { hasSamples, hasTemplates, sampleFiles, sampleProjects, templateFiles } from "../../samples";
 
 const NAMESPACES = `
   xmlns="http://schemas.microsoft.com/netfx/2009/xaml/activities"
   xmlns:ui="http://schemas.uipath.com/workflow/activities"
   xmlns:uix="http://schemas.uipath.com/workflow/activities/uix"
   xmlns:ueab="clr-namespace:UiPath.Excel.Activities.Business;assembly=UiPath.Excel.Activities"
+  xmlns:bem="clr-namespace:BalaReva.Excel.Main;assembly=BalaReva.Excel.Activities"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"`;
 
 function xaml(body: string): string {
@@ -243,18 +243,100 @@ describe("importProject: application context", () => {
     expect(tree).toBe("Process(WithBrowser(WithMicrosoftExcel(BrowserClickButton)))");
   });
 
-  it("leaves UI activities in desktop and SAP scopes unmapped but records the context", () => {
+  it("maps UI activities in desktop and SAP scopes to human-interface operations, keeping the context", () => {
     const sap = `
       <uix:NApplicationCard DisplayName="Use SAP">
         <uix:NApplicationCard.Body><ActivityAction x:TypeArguments="x:Object">${click}</ActivityAction></uix:NApplicationCard.Body>
         <uix:NApplicationCard.TargetApp><uix:TargetApp FilePath="C:\\SAP\\saplogon.exe" /></uix:NApplicationCard.TargetApp>
       </uix:NApplicationCard>`;
     const { result, tree } = importMain(`<Sequence>${sap}${click}</Sequence>`);
-    expect(tree).toBe("Process(Flow(?NApplicationCard(?NClick), ?NClick))");
+    expect(tree).toBe("Process(Flow(?NApplicationCard(ClickElement), ?NClick))");
     const info = result.processTree.nodeInfo;
     expect([info.Activity_1.mappingStatus, info.Activity_1.source?.context]).toEqual(["structural", "sap"]);
-    expect([info.Activity_2.mappingStatus, info.Activity_2.source?.context]).toEqual(["unmapped", "sap"]);
+    expect([info.Activity_2.mappingStatus, info.Activity_2.source?.context]).toEqual(["mapped", "sap"]);
     expect(info.Activity_3.source?.context).toBeUndefined();
+  });
+
+  it("takes the context of UI activities outside any UI scope from their own selector", () => {
+    const classic = (selector: string) =>
+      `<ui:Click DisplayName="Click"><ui:Click.Target><ui:Target Selector="${selector}" /></ui:Click.Target></ui:Click>`;
+    const modern = `<uix:NClick DisplayName="Click"><uix:NClick.Target>
+      <uix:TargetAnchorable ScopeSelectorArgument="&lt;html app='chrome.exe' title='Portal' /&gt;" FullSelectorArgument="&lt;webctrl tag='BUTTON' /&gt;" />
+    </uix:NClick.Target></uix:NClick>`;
+    const { tree, nodes } = importMain(`<Sequence>
+      ${classic("&lt;html app='firefox.exe' /&gt;&lt;webctrl id='save' tag='BUTTON' /&gt;")}
+      ${classic("&lt;webctrl id='next' tag='A' /&gt;")}
+      ${classic("[String.Format(&quot;&lt;html app='chrome.exe' /&gt;&lt;webctrl aaname='{0}' /&gt;&quot;, name)]")}
+      ${modern}
+      ${classic("&lt;wnd app='iexplore.exe' cls='#32770' /&gt;&lt;wnd ctrlid='1' /&gt;")}
+      ${classic("&lt;wnd app='saplogon.exe' cls='SAP_FRONTEND_SESSION' /&gt;")}
+      ${classic("[savedSelector]")}
+      ${classic("{x:Null}")}
+    </Sequence>`);
+    expect(tree).toBe(
+      "Process(Flow(BrowserClickButton, BrowserClickButton, BrowserClickButton, BrowserClickButton, ClickElement, ClickElement, ?Click, ?Click))"
+    );
+    expect(nodes.map((n) => n.source?.context)).toEqual([
+      "browser",
+      "browser",
+      "browser",
+      "browser",
+      "desktop",
+      "sap",
+      undefined,
+      undefined,
+    ]);
+  });
+
+  it("lets an enclosing UI scope win over the activity's own selector", () => {
+    const { tree, nodes } = importMain(`
+      <ui:OpenApplication DisplayName="Open app" FileName="notepad.exe">
+        <ui:OpenApplication.Body><ActivityAction x:TypeArguments="x:Object">
+          <ui:Click DisplayName="Click"><ui:Click.Target><ui:Target Selector="&lt;html app='chrome.exe' /&gt;" /></ui:Click.Target></ui:Click>
+        </ActivityAction></ui:OpenApplication.Body>
+      </ui:OpenApplication>`);
+    expect(tree).toBe("Process(?OpenApplication(ClickElement))");
+    expect(nodes[1].source?.context).toBe("desktop");
+  });
+
+  it("maps classic file, text and Excel variants onto existing operations and drops highlights", () => {
+    const { tree, nodes } = importMain(`<Sequence>
+      <ui:Delete Path="old.txt" />
+      <ui:WriteTextFile FileName="out.txt" Text="done" />
+      <ui:Highlight />
+      <bem:ExcelScope FilePath="report.xlsx"><bem:ExcelScope.Body><ActivityAction x:TypeArguments="x:Object">
+        <ui:AppendRange SheetName="Sheet1" /><ui:ExcelCopyPasteRange />
+      </ActivityAction></bem:ExcelScope.Body></bem:ExcelScope>
+    </Sequence>`);
+    expect(tree).toBe(
+      "Process(Flow(DeleteFile, CreateTextFile, WithMicrosoftExcel(Flow(ExcelWriteRange, ExcelCopyRange))))"
+    );
+    expect(nodes[2].source).toMatchObject({ context: "excel", target: "report.xlsx" });
+  });
+
+  it("maps round 2 operations: data tables, files, databases, waiting, dialogs and leaving a loop", () => {
+    const { tree } = importMain(`<Sequence>
+      <ui:BuildDataTable /><ui:AddDataRow /><ui:FilterDataTable />
+      <ui:CreateDirectory Path="out" /><ui:PathExists /><ui:ReadCsvFile FilePath="in.csv" />
+      <ui:DatabaseConnect /><ui:ExecuteQuery />
+      <ui:Delay /><ui:MessageBox Text="Done" /><ui:SendHotkey />
+      <ForEach DisplayName="Each"><ActivityAction><Sequence><ui:Break /></Sequence></ActivityAction></ForEach>
+    </Sequence>`);
+    expect(tree).toBe(
+      "Process(Flow(TableCreate, TableAddRow, TableFilter, CreateFolder, PathExists, ReadCsvFile, " +
+        "DatabaseConnect, DatabaseRunQuery, Wait, ShowMessage, PressKeys, ForEachLoop(ExitLoop)))"
+    );
+  });
+
+  it("turns Check App State into a decision on the element, or an element check without branches", () => {
+    const check = (ifExists: string, ifNotExists: string) => `
+      <uix:NCheckState DisplayName="Check App State">
+        <uix:NCheckState.IfExists><ActivityAction x:TypeArguments="x:Object"><Sequence>${ifExists}</Sequence></ActivityAction></uix:NCheckState.IfExists>
+        <uix:NCheckState.IfNotExists><ActivityAction x:TypeArguments="x:Object"><Sequence>${ifNotExists}</Sequence></ActivityAction></uix:NCheckState.IfNotExists>
+      </uix:NCheckState>`;
+    const { tree, result } = importMain(`<Sequence>${check(`<Assign DisplayName="Found" />`, "")}${check("", "")}</Sequence>`);
+    expect(tree).toBe("Process(Flow(BinaryDecision(SetVariable, Flow()), CheckElement))");
+    expect(result.processTree.nodeInfo.Gateway_1.source?.expression).toBe("the target UI element appears");
   });
 
   it("marks custom code and orchestration activities as manual", () => {
@@ -263,6 +345,51 @@ describe("importProject: application context", () => {
       ["manual", "Invoke Code: custom VB/C# code"],
       ["manual", "Config and secrets: Orchestrator asset"],
     ]);
+  });
+});
+
+describe("importProject: REFramework", () => {
+  const invoke = (file: string) => `<ui:InvokeWorkflowFile WorkflowFileName="${file}" />`;
+  const state = (name: string, entry: string, transitionAction = "") => `
+    <State DisplayName="${name}">
+      <State.Entry><Sequence>${entry}</Sequence></State.Entry>
+      <State.Transitions><Transition><Transition.Action>${transitionAction}</Transition.Action></Transition></State.Transitions>
+    </State>`;
+
+  it("imports what the states invoke besides the framework's own workflows, also when renamed", () => {
+    const { result, tree } = importMain(
+      `<StateMachine DisplayName="General Business Process">
+        ${state("Initialization", invoke("10. Framework\\10.a InitAllSettings.xaml") + invoke("AddQueue.xaml") + invoke("Framework\\InitAllApplications.xaml"))}
+        ${state("Get Transaction Data", invoke("10. Framework\\10.d GetTransactionData.xaml"))}
+        ${state(
+          "Process Transaction",
+          `<TryCatch><TryCatch.Try>${invoke("10. Framework\\10.e Process.xaml")}</TryCatch.Try></TryCatch>`,
+          invoke("10. Framework\\10.f SetTransactionStatus.xaml")
+        )}
+        ${state("End Process", invoke("Framework\\KillAllProcesses.xaml"))}
+      </StateMachine>`,
+      {
+        "AddQueue.xaml": xaml(`<ui:AddQueueItem DisplayName="Add item" />`),
+        "Framework/InitAllApplications.xaml": xaml(`<ui:NavigateTo DisplayName="Open portal" />`),
+        "10. Framework/10.a InitAllSettings.xaml": xaml(`<Assign DisplayName="Read config" />`),
+        "10. Framework/10.d GetTransactionData.xaml": xaml(`<ui:GetQueueItem />`),
+        "10. Framework/10.e Process.xaml": xaml(`<Assign DisplayName="Business logic" />`),
+        "10. Framework/10.f SetTransactionStatus.xaml": xaml(`<ui:SetTransactionStatus />`),
+        "Framework/KillAllProcesses.xaml": xaml(`<ui:KillProcess />`),
+      }
+    );
+    expect(result.source.reframework).toMatchObject({
+      initFiles: ["AddQueue.xaml", "Framework/InitAllApplications.xaml"],
+      processFiles: ["10. Framework/10.e Process.xaml"],
+      closeFiles: [],
+      frameworkFiles: [
+        "10. Framework/10.a InitAllSettings.xaml",
+        "10. Framework/10.d GetTransactionData.xaml",
+        "10. Framework/10.f SetTransactionStatus.xaml",
+        "Framework/KillAllProcesses.xaml",
+      ],
+    });
+    expect(tree).toBe("Process(Flow(?AddQueueItem, BrowserOpenURL, ?REFramework.TransactionLoop(SetVariable)))");
   });
 });
 
@@ -302,32 +429,17 @@ describe("uipathActivityMapping", () => {
   });
 });
 
-// Real UiPath Studio templates, downloaded to the git-ignored samples/ folder.
-const templatesDir = path.resolve(__dirname, "../../../../samples/uipath-studio-templates");
-
-function readProject(relativeDir: string): Record<string, string> {
-  const dir = path.join(templatesDir, relativeDir);
-  const files: Record<string, string> = {};
-  for (const file of fs.readdirSync(dir, { recursive: true, encoding: "utf8" })) {
-    const full = path.join(dir, file);
-    if (fs.statSync(full).isFile() && /\.(xaml|json)$/i.test(file)) {
-      files[file] = fs.readFileSync(full, "utf8");
-    }
-  }
-  return files;
-}
-
-describe.skipIf(!fs.existsSync(templatesDir))("importProject on UiPath Studio templates", () => {
+describe.skipIf(!hasTemplates)("importProject on UiPath Studio templates", () => {
   it.each([
     "REFramework/contentFiles/any/any/pt0/VisualBasic",
     "REFramework/contentFiles/any/any/pt3/CSharp",
     "REFramework/contentFiles/any/any/pt5/CSharp",
   ])("recognises REFramework in %s", (dir) => {
-    const result = importProject(readProject(dir));
+    const result = importProject(templateFiles(dir));
     expect(result.source.reframework).toMatchObject({
-      processFile: "Framework/Process.xaml",
-      initFile: "Framework/InitAllApplications.xaml",
-      closeFile: "Framework/CloseAllApplications.xaml",
+      processFiles: ["Framework/Process.xaml"],
+      initFiles: ["Framework/InitAllApplications.xaml"],
+      closeFiles: ["Framework/CloseAllApplications.xaml"],
     });
     expect(result.source.reframework?.frameworkFiles).toContain("Framework/GetTransactionData.xaml");
     expect(result.source.reframework?.configFiles.length).toBeGreaterThan(0);
@@ -336,7 +448,7 @@ describe.skipIf(!fs.existsSync(templatesDir))("importProject on UiPath Studio te
   });
 
   it("maps the Excel-to-website template's clicks to browser operations", () => {
-    const result = importProject(readProject("EnterExcelDataIntoWebsite/contentFiles/any/any/pt0/VisualBasic"));
+    const result = importProject(templateFiles("EnterExcelDataIntoWebsite/contentFiles/any/any/pt0/VisualBasic"));
     const tree = render(result.processTree.tree, result.processTree.nodeInfo);
     expect(tree).toBe(
       "Process(WithBrowser(Flow(BrowserOpenURL, BrowserNavigate, WithMicrosoftExcel(ForEachLoop(Flow(" +
@@ -346,8 +458,17 @@ describe.skipIf(!fs.existsSync(templatesDir))("importProject on UiPath Studio te
   });
 
   it("imports the Flowchart template with its loop back flagged", () => {
-    const result = importProject(readProject("TransactionalProcess/contentFiles/any/any/pt0/VisualBasic"));
+    const result = importProject(templateFiles("TransactionalProcess/contentFiles/any/any/pt0/VisualBasic"));
     const manual = Object.values(result.processTree.nodeInfo).filter((n) => n.mappingStatus === "manual");
     expect(manual.map((n) => n.label)).toEqual(["Flowchart loop back to Data Input"]);
+  });
+});
+
+describe.skipIf(!hasSamples)("importProject on sample bots", () => {
+  it.each(sampleProjects())("gives every node of %s a mapping status", (project) => {
+    const { processTree } = importProject(sampleFiles(project));
+    for (const info of Object.values(processTree.nodeInfo)) {
+      expect(["mapped", "unmapped", "manual", "structural"]).toContain(info.mappingStatus);
+    }
   });
 });

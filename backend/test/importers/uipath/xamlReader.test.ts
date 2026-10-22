@@ -8,6 +8,7 @@ import {
   readXaml,
   XamlNode,
 } from "../../../src/importers/uipath/xamlReader";
+import { hasSamples, sampleFiles, samplesDir, sampleProjects } from "../../samples";
 
 const HEADER = `<Activity mc:Ignorable="sap sap2010" x:Class="Main"
   xmlns="http://schemas.microsoft.com/netfx/2009/xaml/activities"
@@ -157,18 +158,15 @@ describe("assemblyOf", () => {
   });
 });
 
-// Real UiPath Studio templates, downloaded to the git-ignored samples/ folder.
-const templatesDir = path.resolve(__dirname, "../../../../samples/uipath-studio-templates");
-
-describe.skipIf(!fs.existsSync(templatesDir))("readXaml on UiPath Studio templates", () => {
-  const xamlFiles = fs.existsSync(templatesDir)
-    ? fs
-        .readdirSync(templatesDir, { recursive: true, encoding: "utf8" })
-        .filter((file) => file.endsWith(".xaml") && !file.startsWith(".git"))
-    : [];
+describe.skipIf(!hasSamples)("readXaml on sample bots", () => {
+  const xamlFiles = sampleProjects().flatMap((project) =>
+    Object.keys(sampleFiles(project))
+      .filter((file) => /\.xaml$/i.test(file))
+      .map((file) => path.join(project, file))
+  );
 
   it.each(xamlFiles)("parses %s", (file) => {
-    const root = readXaml(fs.readFileSync(path.join(templatesDir, file), "utf8"));
+    const root = readXaml(fs.readFileSync(path.join(samplesDir, file), "utf8"));
     expect(root.name).toBe("Activity");
     expect(root.children.length).toBeGreaterThan(0);
   });

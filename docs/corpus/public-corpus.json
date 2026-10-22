@@ -1,0 +1,248 @@
+{
+  "set": "public",
+  "role": "dev",
+  "selected": "2026-10-21",
+  "description": "Public UiPath projects from GitHub, the dev set that drives mapping and ontology extensions. Fetch with scripts/fetch-public-corpus.sh into samples/public/; see docs/corpus/README.md for how they were selected.",
+  "projects": [
+    {
+      "repo": "Sharmila-std/uipath_and_crawl4ai",
+      "commit": "e4f4213b47d2ec7443fa71105d5e4588ac9953eb",
+      "project": "",
+      "license": null
+    },
+    {
+      "repo": "Its-Nishant-10/invoice_automation_pdf",
+      "commit": "18daa029b9d9bbe34fb42b0c7eecdf7a374e8336",
+      "project": "",
+      "license": null
+    },
+    {
+      "repo": "ShonHarsh/UiPath-Program-Start-Up-Bot",
+      "commit": "d55cfab29dc76b9992899713ea46e77cff1d366c",
+      "project": "",
+      "license": "MIT"
+    },
+    {
+      "repo": "Stephan-dev12/RPA_Assignment",
+      "commit": "50e630b29cabb00f41ea655706868fba5ecc5474",
+      "project": "",
+      "license": null
+    },
+    {
+      "repo": "whooaaapppp/yearlyreport-uipath",
+      "commit": "b9d45805bdc4a881cfc5d8ed66f5704e5886c3d5",
+      "project": "",
+      "license": null
+    },
+    {
+      "repo": "recepidiz/itacademy",
+      "commit": "14bc760a69f9299df32381a5fe46a0818e96d0d1",
+      "project": "",
+      "license": null
+    },
+    {
+      "repo": "ShonHarsh/RPADev-S02P03-Switch",
+      "commit": "931f863b3a5153b6fc88879f97c81d0b2f036eb6",
+      "project": "",
+      "license": "MIT"
+    },
+    {
+      "repo": "griesbaecherp/UIPathPOC_Read-from-Excel-Files",
+      "commit": "7d7f0f7c3ca20653972ef10653e8aec04a01f573",
+      "project": "",
+      "license": null
+    },
+    {
+      "repo": "ouardi-DSI/BKSOL_SDM_Report_PL_TauxMAD",
+      "commit": "f7ba0fd3e0c21ae09622d4cdd7631295786e102d",
+      "project": "",
+      "license": "MIT"
+    },
+    {
+      "repo": "miyaichi/BatchJobController",
+      "commit": "fbebb425d5e5410e8e78913183cc7a4d644c0051",
+      "project": "",
+      "license": "Apache-2.0"
+    },
+    {
+      "repo": "miyaichi/UiPath-Log-Converter",
+      "commit": "b02da9009dbc4f197b626fb2b8aac759e85690d6",
+      "project": "",
+      "license": "MIT"
+    },
+    {
+      "repo": "abustosp/Extractos-a-SOS-Contador",
+      "commit": "f840bfa65ea70a7e53d9c3d04053e18e8ddf4946",
+      "project": "",
+      "license": "NOASSERTION"
+    },
+    {
+      "repo": "jknolte/cons_extractkbarticles",
+      "commit": "eeca89ef4804013c0c1128441f0d4404edb31794",
+      "project": "",
+      "license": null
+    },
+    {
+      "repo": "gfrancoa/RPA-TRM",
+      "commit": "f3e7e6e1685b188705b06929ea2a7cf80ed6adef",
+      "project": "",
+      "license": null
+    },
+    {
+      "repo": "Brajesh31/Robotic-Process-Automation-UiPath",
+      "commit": "2e761b40df8c689f159c0e70621e27d5ae2bc517",
+      "project": "",
+      "license": null
+    },
+    {
+      "repo": "Manoj-0312/Room-Allocation-Automation",
+      "commit": "ef62f6ac463852926150e651e2d5c51e3c514687",
+      "project": "",
+      "license": "MIT"
+    },
+    {
+      "repo": "bogdanripa/Order-Food-Now",
+      "commit": "c9946bbe2edc2114e797fe6bacbabf7a87cc4cb3",
+      "project": "",
+      "license": null
+    },
+    {
+      "repo": "HederMilani/HCM012-RegistroPonto---UiPath",
+      "commit": "eafb60878e8a654587526e1fb788b0ca210b0436",
+      "project": "",
+      "license": "MIT"
+    },
+    {
+      "repo": "KonduitAI/mailboxdetection-workflow",
+      "commit": "acad633478e8c881946f1111c4751548ccf5b686",
+      "project": "",
+      "license": null
+    },
+    {
+      "repo": "fc205/DependencyViewer",
+      "commit": "e13b0072af89e1ef2fe95105447be95c94575abe",
+      "project": "",
+      "license": null
+    },
+    {
+      "repo": "tjaya-1902/RPA-Order-Processing",
+      "commit": "e79f6f1cdfdea60b541fbc3012f4d729586399de",
+      "project": "",
+      "license": null
+    },
+    {
+      "repo": "amerisure/uipath-chrome-input-example",
+      "commit": "6c044116e41b34e08753a1184b3696da6eb38aff",
+      "project": "src",
+      "license": "MIT"
+    },
+    {
+      "repo": "ouardi-DSI/Risk_ReportingRisqueMarche",
+      "commit": "81a037cc08c770f3aec8ccb0568c36473bc12a15",
+      "project": "",
+      "license": "MIT"
+    },
+    {
+      "repo": "LowyShin/lwrpa-uip-googlesuggest",
+      "commit": "b14907f2e8e0b7bb535af2116197f9832416bc09",
+      "project": "",
+      "license": null
+    },
+    {
+      "repo": "whooaaapppp/VendorDetailPerformer",
+      "commit": "4040a50f08437bfd14e67b95ba9dbe4e2984c173",
+      "project": "",
+      "license": null
+    },
+    {
+      "repo": "lezwon/uipath_deoldify",
+      "commit": "499254c10cdac080833428b1ace0b6789272926e",
+      "project": "",
+      "license": "MIT"
+    },
+    {
+      "repo": "pdmorale/OCR_Statistics",
+      "commit": "dca056952261bc1dc07451542c209b425df433bd",
+      "project": "",
+      "license": "MIT"
+    },
+    {
+      "repo": "nutun-rpa/RPA021_FNB_CAS_account_data_verification",
+      "commit": "9f4c0168fc11b5257f05428041730876a51a8bd7",
+      "project": "",
+      "license": "MIT"
+    },
+    {
+      "repo": "LowyShin/lwrpa-uip-moveoldfiles",
+      "commit": "625ecd932fd8cfb5dc9105d58b91b23a37a9652d",
+      "project": "",
+      "license": null
+    },
+    {
+      "repo": "onurkinay/Onboarding",
+      "commit": "d065e61387f536812f7aec47acba97c8f9c1022a",
+      "project": "OnboardingUiPath",
+      "license": null
+    },
+    {
+      "repo": "Medie/MedFramework",
+      "commit": "8f7d5f456221b9330e2765a4831227d9a1936096",
+      "project": "",
+      "license": null
+    },
+    {
+      "repo": "SianGonza/BOT-Facturador-AFIP",
+      "commit": "97f296bb34fca2aa4462a6d62babbd0fed7648fa",
+      "project": "",
+      "license": "NOASSERTION"
+    },
+    {
+      "repo": "CrystalZhang1/RPA",
+      "commit": "e5c43dfc8ef49566f10f0f2368bc3b817818daf7",
+      "project": "13APS数据处理",
+      "license": null
+    },
+    {
+      "repo": "LemonPepperSeasoning/Movie-Stats",
+      "commit": "911f64feb7d1ceb65f3ed668e4fcf8a2c773a01e",
+      "project": "",
+      "license": "MIT"
+    },
+    {
+      "repo": "JFEspanolito/PlantillaFlujos2025UiPath",
+      "commit": "1c91b797deae93d18e468b0d61648a3438c8fb61",
+      "project": "",
+      "license": null
+    },
+    {
+      "repo": "kprainsa/scraping_Biman_Ticket",
+      "commit": "23c721a78e90bbea5f2e757abe6db3f6d492f80e",
+      "project": "",
+      "license": "MPL-2.0"
+    },
+    {
+      "repo": "Make310/AUX-RPAChallenge_InputForm",
+      "commit": "9984cce1d8ade20dce925eb1ca32f51fc3c6eb52",
+      "project": "",
+      "license": "MIT"
+    },
+    {
+      "repo": "bhanukumardev/MinorProject_NewsHeadlineScrapper",
+      "commit": "d65a27af3dc457739a1fd6263196745034f3b1b7",
+      "project": "",
+      "license": null
+    },
+    {
+      "repo": "peteroyce/Library-Due-Date-Reminder-Automation",
+      "commit": "2f2ac859a809a6617a7b0e01afe229c3da8203d6",
+      "project": "",
+      "license": "MIT"
+    },
+    {
+      "repo": "RYHBTG/RPA_AUTOMATION",
+      "commit": "38f5c067fb59e981b9e31684f2f41ae9bd27cf83",
+      "project": "Processo Finals",
+      "license": null
+    }
+  ]
+}

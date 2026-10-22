@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { buildGapReport } from "../../src/analysis/gapReport";
 import { buildMigrationReport } from "../../src/analysis/migrationReport";
+import { migrationTargets } from "../../src/analysis/migrationTargets";
 import {
+  gain,
+  gapsCsv,
+  gapsMarkdown,
   percent,
   portfolioCsv,
   portfolioMarkdown,
@@ -22,7 +27,7 @@ const imported = importProject(
           <If.Else><ui:InvokeCode DisplayName="Login script" /></If.Else>
         </If>
         <While DisplayName="Retry" Condition="[tries &lt; 3]"><Assign DisplayName="Count" /></While>
-        <ui:KillProcess DisplayName="Stop app" />
+        <ui:Beep DisplayName="Beep" />
       </Sequence>
     </Activity>`,
   },
@@ -41,7 +46,7 @@ describe("renderProcessTree", () => {
       '      ! InvokeCode  "Login script"  [Invoke Code: custom VB/C# code]',
       '  ✓ ConditionalLoop (loop)  "Retry"',
       '    ✓ SetVariable  "Count"',
-      '  ✗ KillProcess  "Stop app"',
+      '  ✗ Beep  "Beep"',
     ]);
   });
 });
@@ -51,7 +56,7 @@ describe("renderReport", () => {
     const lines = renderReport(buildMigrationReport(imported));
     expect(lines[0]).toBe("Bot: Portal, bot  (Main.xaml; 1/1 workflow files imported)");
     expect(lines[1]).toBe("Steps: 7  mapped 5 · unmapped 1 · manual 1   Ontology coverage: 71%");
-    expect(lines[2]).toBe("Unmapped: KillProcess ×1");
+    expect(lines[2]).toBe("Unmapped: Beep ×1");
   });
 });
 
@@ -73,5 +78,37 @@ describe("percent", () => {
   it("rounds shares and shows a dash for missing values", () => {
     expect(percent(0.825)).toBe("83%");
     expect(percent(null)).toBe("–");
+  });
+});
+
+describe("gap tables", () => {
+  const gaps = buildGapReport([buildMigrationReport(imported, migrationTargets.pad)]);
+
+  it("renders coverage and one table per kind of gap as Markdown", () => {
+    const lines = gapsMarkdown(gaps).split("\n");
+    expect(lines.slice(0, 6)).toEqual([
+      "# Mapping gaps",
+      "",
+      "Bots: 1 (1 with steps) · steps: 7",
+      "",
+      "- Ontology coverage: pooled 71% · median 71%",
+      "- Power Automate Desktop coverage: pooled 71% · median 71%",
+    ]);
+    expect(lines).toContain("| Beep | 1 | 1 | +14.3 pp | none 1 |");
+    expect(lines).toContain("| Invoke Code: custom VB/C# code | 1 | 1 | +14.3 pp |");
+    expect(lines).toContain("## Ontology-only operations (no Power Automate Desktop action)");
+  });
+
+  it("writes every gap as a CSV row with its kind", () => {
+    expect(gapsCsv(gaps).split("\n")).toEqual([
+      "Kind,Name,Occurrences,Bots,Gain,Contexts",
+      "unmapped,Beep,1,1,0.1429,none 1",
+      "manual,Invoke Code: custom VB/C# code,1,1,0.1429,",
+    ]);
+  });
+
+  it("formats gains in percentage points", () => {
+    expect(gain(0.0314)).toBe("+3.1 pp");
+    expect(gain(null)).toBe("–");
   });
 });

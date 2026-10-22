@@ -6,8 +6,9 @@ import BotModel, {
 } from "../interfaces/BotModel";
 import { MigrationReport } from "../interfaces/MigrationReport";
 
-// The back end runs on port 3001 of the same machine that serves the page, so the app also
-// works when opened from another computer (e.g. http://192.168.1.101:5173)
+// The back end runs on port 3001 of the same machine that serves the page. Both only listen on
+// that machine by default; to open the app from another computer (e.g. http://192.168.1.101:5173),
+// start the back end with HOST=0.0.0.0 and the front end with `npm run dev -- --host`
 const API_BASE = `${window.location.protocol}//${window.location.hostname}:3001/api`;
 const API_URL = `${API_BASE}/BotModels`;
 

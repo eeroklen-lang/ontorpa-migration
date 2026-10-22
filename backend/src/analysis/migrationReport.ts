@@ -53,6 +53,8 @@ export interface MigrationReport {
   target?: string;
   /** Activity types with no ontology operation, most frequent first. */
   unmappedActivities: { activityType: string; context?: string; count: number }[];
+  /** Mapped operations the target has no translation for, most frequent first (with a target only). */
+  ontologyOnlyOperations?: { operation: string; count: number }[];
   /** Applications the bot automates, with where the evidence came from. */
   applications: { name: string; evidence: ("operation" | "scope" | "dependency")[] }[];
   manualWork: {
@@ -189,6 +191,9 @@ export function buildMigrationReport(
     report.target = target.name;
     report.totals.ontologyOnly = mapped.length - generated.length;
     report.coverage.target = share(generated.length);
+    report.ontologyOnlyOperations = countOperations(
+      mapped.filter((n) => !target.operations.has(n.concept))
+    );
   }
   return report;
 }
@@ -267,6 +272,14 @@ function countUnmapped(nodes: IProcessTreeNodeInfo[]): MigrationReport["unmapped
   return Array.from(counts.values())
     .map((entry) => (entry.context ? entry : { activityType: entry.activityType, count: entry.count }))
     .sort((a, b) => b.count - a.count || a.activityType.localeCompare(b.activityType));
+}
+
+function countOperations(nodes: IProcessTreeNodeInfo[]): { operation: string; count: number }[] {
+  const counts = new Map<string, number>();
+  nodes.forEach((node) => counts.set(node.concept, (counts.get(node.concept) || 0) + 1));
+  return Array.from(counts, ([operation, count]) => ({ operation, count })).sort(
+    (a, b) => b.count - a.count || a.operation.localeCompare(b.operation)
+  );
 }
 
 function applicationsOf(
